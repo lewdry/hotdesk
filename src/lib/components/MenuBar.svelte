@@ -56,7 +56,7 @@
     const file = new File([content], 'hotdesk.md', { type: 'text/markdown' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: 'hotdesk.md' });
+        await navigator.share({ files: [file], title: 'Hotdesk' });
         return;
       } catch (err) {
         if (err.name === 'AbortError') return;
@@ -74,7 +74,6 @@
   }
 </script>
 
-<svelte:window on:click={closeAll} />
 <input
   bind:this={fileInput}
   type="file"
@@ -82,6 +81,12 @@
   style="display:none"
   on:change={onFileSelected}
 />
+
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
+{#if fileOpen || viewOpen}
+  <div class="menu-backdrop" on:click={closeAll}></div>
+{/if}
 
 <!-- System.css menu bar -->
 <div class="menu-bar">
@@ -280,6 +285,12 @@
 
   .menu-bar-clock {
     cursor: default;
+  }
+
+  .menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
   }
 
   /* About dialog */

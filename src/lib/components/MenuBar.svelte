@@ -180,9 +180,24 @@
         <span class="title">About Hotdesk</span>
       </div>
       <div class="window-pane about-body">
-        <p><strong>Hotdesk</strong></p>
-        <p>Version 1.0</p>
+        <p><strong>Hotdesk v1.0</strong></p>
         <p>A persistent, distraction-free notepad by Lewis Dryburgh.</p>
+        <div class="about-section">
+          <p class="about-label">Made with:</p>
+          <ul class="about-list">
+            <li><strong>Interface:</strong> System.css by Sakun Acharige.</li>
+            <li><strong>Markdown Engine:</strong> Marked by Christopher Jeffrey and MarkedJS Community.</li>
+            <li><strong>Data Safety:</strong> DOMPurify by Cure53.</li>
+            <li><strong>Storage:</strong> idb by Jake Archibald.</li>
+          </ul>
+        </div>
+        <div class="about-section">
+          <p class="about-label">Inspiration:</p>
+          <p>Based on the "read-write" web philosophy of Tim Berners-Lee.</p>
+        </div>
+        <div class="about-section">
+          <p>Hotdesk is local-first. Your notes are stored in your browser and never leave your device, unless you share them.</p>
+        </div>
         <button class="btn" on:click={() => showAbout = false}>OK</button>
       </div>
     </div>
@@ -279,7 +294,7 @@
   }
 
   .about-dialog {
-    width: 280px;
+    width: 360px;
   }
 
   .about-body {
@@ -287,9 +302,29 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    font-size: 14px;
+    font-size: 13px;
     align-items: center;
     text-align: center;
+  }
+
+  .about-section {
+    width: 100%;
+    text-align: left;
+  }
+
+  .about-label {
+    font-weight: bold;
+    margin-bottom: 2px;
+  }
+
+  .about-list {
+    margin: 0 0 0 16px;
+    padding: 0;
+    list-style: disc;
+  }
+
+  .about-list li {
+    margin-bottom: 2px;
   }
 
   .about-body .btn {

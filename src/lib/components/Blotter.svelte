@@ -7,7 +7,7 @@
   let textarea;
 
   $: renderedHTML = $previewMode
-    ? DOMPurify.sanitize(marked.parse($blotter))
+    ? DOMPurify.sanitize(marked.parse($blotter, { breaks: true }))
     : '';
 
   function handleInput(e) {

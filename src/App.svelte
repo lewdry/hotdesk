@@ -1,7 +1,13 @@
 <script>
+  import { onMount } from 'svelte';
   import MenuBar from './lib/components/MenuBar.svelte';
   import Blotter from './lib/components/Blotter.svelte';
   import { previewMode } from './lib/stores/previewMode.js';
+  import { firstVisit } from './lib/stores/blotter.js';
+
+  onMount(async () => {
+    if (await firstVisit) previewMode.set(true);
+  });
 </script>
 
 <div class="app-shell">

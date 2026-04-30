@@ -1,5 +1,6 @@
 <script>
   import { blotter } from '../stores/blotter.js';
+  import { previewMode } from '../stores/previewMode.js';
 
   let fileOpen = false;
   let viewOpen = false;
@@ -11,11 +12,16 @@
     viewOpen = false;
   }
 
-  async function handleClear() {
+  async function handleNew() {
     closeAll();
-    if (confirm('Clear the blotter? This cannot be undone.')) {
-      await blotter.clear();
-    }
+    await blotter.clear();
+    previewMode.set(false);
+  }
+
+  async function handleReset() {
+    closeAll();
+    await blotter.reset();
+    previewMode.set(true);
   }
 
   function handleAbout() {
@@ -70,6 +76,11 @@
 <!-- System.css menu bar -->
 <div class="menu-bar">
   <div class="menu-bar-left">
+    <!-- New -->
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="menu-bar-item" on:click|stopPropagation={handleNew}>New</div>
+
     <!-- File menu -->
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -81,7 +92,7 @@
           <li class="menu-separator" role="separator"></li>
           <li class="menu-item" role="menuitem" tabindex="0" on:click={handleImport} on:keydown={e => e.key === 'Enter' && handleImport()}>Import</li>
           <li class="menu-separator" role="separator"></li>
-          <li class="menu-item" role="menuitem" tabindex="0" on:click={handleClear} on:keydown={e => e.key === 'Enter' && handleClear()}>Clear</li>
+          <li class="menu-item" role="menuitem" tabindex="0" on:click={handleReset} on:keydown={e => e.key === 'Enter' && handleReset()}>Reset</li>
           <li class="menu-separator" role="separator"></li>
           <li class="menu-item" role="menuitem" tabindex="0" on:click={handleAbout} on:keydown={e => e.key === 'Enter' && handleAbout()}>About</li>
         </ul>

@@ -5,11 +5,17 @@ const DB_NAME = 'hotdesk';
 const STORE_NAME = 'blotter';
 const KEY = 'content';
 
-const WELCOME_TEXT = `# Welcome to Hotdesk v1.0
+const WELCOME_TEXT = `## Welcome to Hotdesk v1.0
 
 The web should be a place to create, not just browse. **Hotdesk** is a "read-write" home page: a private space to think, link and build. 
 
-It is a quiet corner of the digital world that belongs to you.
+---
+
+### Getting started. 
+
+Select **New** to open a blank page, or toggle **Markdown** to edit this text.
+
+When you are ready to move your notes, use **File > Save** to export your work as a universal \`.md\` file.
 
 ---
 
@@ -17,9 +23,11 @@ It is a quiet corner of the digital world that belongs to you.
 
 Hotdesk is a **Markdown-enabled** editor. As you type, your work is saved automatically to your browser's local storage. 
 
-*   **Persistence:** Your text remains here even if you close the tab, restart your computer, or go offline.
-*   **Focus:** Use this as a scratchpad for daily tasks, a personal journal, or a library for your most-used links.
-*   **Privacy:** No tracking and no cloud. Your data never leaves your device.
+*   **Persistence:** Your text remains here even if you close the tab, restart your computer or go offline.
+*   **Focus:** Use this as a scratchpad for daily tasks, a personal journal or a library for your most-used links.
+*   **Privacy:** No tracking and no cloud. Your data doesn't leave your device.
+
+---
 
 ### Markdown Cheat Sheet
 
@@ -30,10 +38,6 @@ Structure your thoughts with simple shortcuts:
 *   Use \`[Link Name](URL)\` to create links
 
 ---
-
-**Getting started.** Select **New** to start a blank document, or toggle **Markdown** to edit this text.
-
-When you are ready to move your notes, use **File > Save** to export your work as a universal \`.md\` file.
 
 > **Hotdesk**
 > A persistent, distraction-free notepad by Lewis Dryburgh.`;

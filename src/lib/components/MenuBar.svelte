@@ -50,9 +50,19 @@
     e.target.value = '';
   }
 
-  function handleSave() {
+  async function handleSave() {
     closeAll();
     const content = $blotter;
+    const file = new File([content], 'hotdesk.md', { type: 'text/markdown' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'hotdesk.md' });
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        // fall through to download
+      }
+    }
     const url = URL.createObjectURL(new Blob([content], { type: 'text/markdown' }));
     const a = document.createElement('a');
     a.href = url;
@@ -184,7 +194,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 8px;
+    padding: 0 24px;
     user-select: none;
     position: relative;
     z-index: 100;
@@ -250,7 +260,7 @@
 
   .menu-bar-right {
     font-size: 14px;
-    padding-right: 4px;
+    padding-right: 24px;
   }
 
   .menu-bar-clock {

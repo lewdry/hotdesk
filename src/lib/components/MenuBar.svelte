@@ -3,8 +3,19 @@
   import { blotter, persistence } from '../stores/blotter.js';
 
   let showAbout = false;
+  let showPrivateWarning = false;
+  let privateWarningDismissed = false;
   let confirmAction = null; // 'new' | 'reset' | null
   let clock = '';
+
+  $: if ($persistence.mode === 'private' && !privateWarningDismissed) {
+    showPrivateWarning = true;
+  }
+
+  $: if ($persistence.mode !== 'private') {
+    showPrivateWarning = false;
+    privateWarningDismissed = false;
+  }
 
   function updateClock() {
     clock = new Date().toLocaleTimeString([], {
@@ -46,6 +57,11 @@
   function handleAbout() {
     closeAll();
     showAbout = true;
+  }
+
+  function acknowledgePrivateWarning() {
+    showPrivateWarning = false;
+    privateWarningDismissed = true;
   }
 
   let fileInput;
@@ -121,7 +137,11 @@
         class:menu-bar-status-warning={$persistence.mode !== 'persistent'}
         aria-live="polite"
         title={$persistence.message}
-      >{$persistence.mode === 'memory' ? 'Memory only' : 'Fallback storage'}</span>
+      >{$persistence.mode === 'memory'
+        ? 'Memory only'
+        : $persistence.mode === 'private'
+          ? 'Private window'
+          : 'Fallback storage'}</span>
     {/if}
     <span class="menu-bar-clock" aria-label="Current time">{clock}</span>
   </div>
@@ -146,13 +166,28 @@
   </div>
 {/if}
 
+{#if showPrivateWarning}
+  <div class="about-overlay" role="presentation">
+    <div class="window confirm-dialog private-warning-dialog" role="dialog" aria-modal="true" aria-labelledby="private-warning-title">
+      <div class="title-bar">
+        <span class="title" id="private-warning-title">Private/Incognito Mode</span>
+      </div>
+      <div class="window-pane confirm-body private-warning-body">
+        <p>Hotdesk can't autosave your work in Private/Incognito mode. Please save your work manually, or open a non-Private tab.</p>
+        <div class="confirm-buttons">
+          <button class="btn" on:click={acknowledgePrivateWarning}>OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <!-- About dialog -->
 {#if showAbout}
   <div class="about-overlay" role="presentation">
     <button type="button" class="dialog-backdrop" aria-label="Close about dialog" on:click={() => showAbout = false}></button>
     <div class="window about-dialog" role="dialog" aria-modal="true" aria-labelledby="about-title">
       <div class="title-bar">
-        <button class="close" aria-label="Close" on:click={() => showAbout = false}></button>
         <span class="title" id="about-title">About Hotdesk</span>
       </div>
       <div class="window-pane about-body">
@@ -336,6 +371,14 @@
   .confirm-buttons {
     display: flex;
     gap: 8px;
+  }
+
+  .private-warning-dialog {
+    width: 340px;
+  }
+
+  .private-warning-body {
+    align-items: stretch;
   }
 
 </style>

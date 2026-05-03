@@ -19,7 +19,7 @@ The web should be a place to create, not just browse.
 As you type, your work is saved automatically to your browser's local storage. 
 
 *   **Persistence:** Your text remains here if you close the tab, restart your device or go offline.
-*   **Focus:** Use this as a scratchpad for daily tasks, a personal journal or a library for your most-used links.
+*   **Focus:** Use this as a scratchpad for daily tasks, a journal or a library for links.
 *   **Privacy:** No tracking. Your data doesn't leave your device, unless you share it.
 
 ---
@@ -53,6 +53,10 @@ const storageSupport = {
   indexedDB: null,
   localStorage: null
 };
+const sessionContext = {
+  privateBrowsing: false,
+  checked: false
+};
 
 export const persistence = writable({
   mode: 'persistent',
@@ -60,6 +64,14 @@ export const persistence = writable({
 });
 
 function updatePersistence() {
+  if (sessionContext.privateBrowsing) {
+    persistence.set({
+      mode: 'private',
+      message: 'Private browsing detected. Your notes will be cleared when this private window closes.'
+    });
+    return;
+  }
+
   const { indexedDB, localStorage } = storageSupport;
 
   if (indexedDB === false && localStorage === false) {
@@ -87,6 +99,43 @@ function updatePersistence() {
 function markStorage(kind, ok) {
   storageSupport[kind] = ok;
   updatePersistence();
+}
+
+function markPrivateBrowsing(isPrivate) {
+  sessionContext.privateBrowsing = isPrivate;
+  sessionContext.checked = true;
+  updatePersistence();
+}
+
+async function detectPrivateBrowsing() {
+  if (typeof window === 'undefined') return false;
+
+  const userAgent = navigator.userAgent;
+  const isChromium = /Chrome|Chromium|CriOS|Edg\//.test(userAgent) && !/OPR\//.test(userAgent);
+
+  if (isChromium && 'webkitRequestFileSystem' in window) {
+    try {
+      await new Promise((resolve, reject) => {
+        window.webkitRequestFileSystem(window.TEMPORARY, 1, resolve, reject);
+      });
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
+  if (navigator.storage?.estimate) {
+    try {
+      const { quota } = await navigator.storage.estimate();
+      if (typeof quota === 'number' && quota > 0 && quota < 120 * 1024 * 1024) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
 }
 
 function readDraft() {
@@ -192,8 +241,14 @@ function debouncedSet(value) {
 }
 
 async function requestPersistence() {
+  markPrivateBrowsing(await detectPrivateBrowsing());
+
   if (navigator.storage?.persist) {
-    await navigator.storage.persist();
+    try {
+      await navigator.storage.persist();
+    } catch {
+      // Ignore persistence request failures and rely on capability checks above.
+    }
   }
 }
 

@@ -227,7 +227,16 @@
     if (!editor) return;
     const md = htmlToMd(editor.innerHTML);
     const html = DOMPurify.sanitize(marked.parse(md || '', { breaks: true }));
-    editor.innerHTML = html || '<p><br></p>';
+    const newHtml = html || '<p><br></p>';
+    // Only replace DOM if content actually changed — avoids destroying the selection
+    // for a no-op blur (e.g. clicking a menu item), which would leave a ghost caret
+    // at the raw top-left corner of the editor element.
+    if (editor.innerHTML !== newHtml) {
+      editor.innerHTML = newHtml;
+    }
+    // Either way, clear any lingering selection now that the element is blurred.
+    // Without this the browser renders a ghost caret at offset 0 (before padding).
+    window.getSelection()?.removeAllRanges();
     lastMd = md;
     blotter.set(md);
   }
@@ -316,6 +325,32 @@
     }
 
     handleInput();
+  }
+
+  // Intercept mousedown in the padding area (e.target === editor means no content child
+  // was hit). Prevent the browser from ever placing the caret at the raw element origin
+  // (top-left corner before padding), then manually position it at the nearest content end.
+  function handleMousedown(e) {
+    if (e.target !== editor || e.button !== 0) return;
+    e.preventDefault();
+    editor.focus({ preventScroll: true });
+
+    const sel = window.getSelection();
+    const r   = document.createRange();
+    const rect = editor.getBoundingClientRect();
+
+    if (e.clientY < rect.top + rect.height / 2) {
+      // Top half → go to start of first content node
+      const first = editor.firstElementChild || editor.firstChild;
+      if (first) { r.setStart(first, 0); r.collapse(true); }
+    } else {
+      // Bottom half → go to end of last content node
+      const last = editor.lastElementChild || editor.lastChild;
+      if (last) { r.selectNodeContents(last); r.collapse(false); }
+    }
+
+    sel.removeAllRanges();
+    sel.addRange(r);
   }
 
   // Open links in a new tab — clicking <a> inside contenteditable doesn't navigate
@@ -572,6 +607,7 @@
   on:input={handleInput}
   on:paste={handlePaste}
   on:blur={handleBlur}
+  on:mousedown={handleMousedown}
   on:click={handleClick}
   on:keydown={handleKeydown}
   on:keyup={refreshActive}
@@ -699,6 +735,14 @@
   .blotter-area :global(u)    { text-decoration: underline; }
   .blotter-area :global(s),
   .blotter-area :global(del)  { text-decoration: line-through; }
+
+  .blotter-area > :global(:first-child) {
+    margin-top: 0;
+  }
+
+  .blotter-area > :global(:last-child) {
+    margin-bottom: 0;
+  }
 
   .blotter-area :global(code) {
     font-family: 'Courier New', Courier, monospace;

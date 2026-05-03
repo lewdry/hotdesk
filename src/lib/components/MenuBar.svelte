@@ -1,37 +1,34 @@
 <script>
   import { blotter } from '../stores/blotter.js';
-  import { previewMode } from '../stores/previewMode.js';
 
-  let fileOpen = false;
-  let viewOpen = false;
   let showAbout = false;
-  let showMarkdownGuide = false;
+  let confirmAction = null; // 'new' | 'reset' | null
 
-  function closeAll() {
-    fileOpen = false;
-    viewOpen = false;
+  function closeAll() {}
+
+  function handleNew() {
+    closeAll();
+    confirmAction = 'new';
   }
 
-  async function handleNew() {
+  function handleReset() {
     closeAll();
-    await blotter.clear();
-    previewMode.set(false);
+    confirmAction = 'reset';
   }
 
-  async function handleReset() {
-    closeAll();
-    await blotter.reset();
-    previewMode.set(true);
+  async function confirmYes() {
+    if (confirmAction === 'new')   await blotter.clear();
+    if (confirmAction === 'reset') await blotter.reset();
+    confirmAction = null;
+  }
+
+  function confirmNo() {
+    confirmAction = null;
   }
 
   function handleAbout() {
     closeAll();
     showAbout = true;
-  }
-
-  function handleMarkdownGuide() {
-    closeAll();
-    showMarkdownGuide = true;
   }
 
   let fileInput;
@@ -50,27 +47,35 @@
     e.target.value = '';
   }
 
+  let isSaving = false;
+
   async function handleSave() {
+    if (isSaving) return;
+    isSaving = true;
     closeAll();
-    const content = $blotter;
-    const file = new File([content], 'hotdesk.md', { type: 'text/markdown' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: 'Hotdesk' });
-        return;
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        // fall through to download
+    try {
+      const content = $blotter;
+      const file = new File([content], 'hotdesk.md', { type: 'text/markdown' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Hotdesk' });
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+          // fall through to download
+        }
       }
+      const url = URL.createObjectURL(new Blob([content], { type: 'text/markdown' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'hotdesk.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally {
+      isSaving = false;
     }
-    const url = URL.createObjectURL(new Blob([content], { type: 'text/markdown' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'hotdesk.md';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 </script>
 
@@ -84,89 +89,49 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-{#if fileOpen || viewOpen}
-  <div class="menu-backdrop" on:click={closeAll}></div>
-{/if}
 
 <!-- System.css menu bar -->
 <div class="menu-bar">
   <div class="menu-bar-left">
-    <!-- New -->
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="menu-bar-item" on:click|stopPropagation={handleNew}>New</div>
-
-    <!-- File menu -->
+    <div class="menu-bar-item" on:click={handleNew}>New</div>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="menu-bar-item" on:click|stopPropagation={() => { fileOpen = !fileOpen; viewOpen = false; }}>
-      File
-      {#if fileOpen}
-        <ul class="menu" role="menu">
-          <li class="menu-item" role="menuitem" tabindex="0" on:click={handleSave} on:keydown={e => e.key === 'Enter' && handleSave()}>Save</li>
-          <li class="menu-separator" role="separator"></li>
-          <li class="menu-item" role="menuitem" tabindex="0" on:click={handleImport} on:keydown={e => e.key === 'Enter' && handleImport()}>Import</li>
-          <li class="menu-separator" role="separator"></li>
-          <li class="menu-item" role="menuitem" tabindex="0" on:click={handleReset} on:keydown={e => e.key === 'Enter' && handleReset()}>Reset</li>
-          <li class="menu-separator" role="separator"></li>
-          <li class="menu-item" role="menuitem" tabindex="0" on:click={handleAbout} on:keydown={e => e.key === 'Enter' && handleAbout()}>About</li>
-        </ul>
-      {/if}
-    </div>
-
-    <!-- View menu -->
+    <div class="menu-bar-item" on:click={handleReset}>Reset</div>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="menu-bar-item" on:click|stopPropagation={() => { viewOpen = !viewOpen; fileOpen = false; }}>
-      View
-      {#if viewOpen}
-        <ul class="menu" role="menu">
-          <li class="menu-item" role="menuitem" tabindex="0" on:click={handleMarkdownGuide} on:keydown={e => e.key === 'Enter' && handleMarkdownGuide()}>Markdown Guide</li>
-          <li class="menu-separator" role="separator"></li>
-          <li class="menu-item disabled" role="menuitem" aria-disabled="true">More options in v2…</li>
-        </ul>
-      {/if}
-    </div>
+    <div class="menu-bar-item" on:click={handleSave}>Save</div>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="menu-bar-item" on:click={handleImport}>Load</div>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="menu-bar-item" on:click={handleAbout}>About</div>
   </div>
 
   <div class="menu-bar-right">
-    <span class="menu-bar-clock">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+    <span class="menu-bar-clock">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
   </div>
 </div>
 
-<!-- Markdown Guide dialog -->
-{#if showMarkdownGuide}
+<!-- Confirm dialog -->
+{#if confirmAction}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="about-overlay" on:click={() => showMarkdownGuide = false}>
+  <div class="about-overlay" on:click={confirmNo}>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="window md-guide-dialog" on:click|stopPropagation>
+    <div class="window confirm-dialog" on:click|stopPropagation>
       <div class="title-bar">
-        <button class="close" aria-label="Close" on:click={() => showMarkdownGuide = false}></button>
-        <span class="title">Markdown Guide</span>
+        <span class="title">{confirmAction === 'new' ? 'New' : 'Reset'}</span>
       </div>
-      <div class="window-pane md-guide-body">
-        <table class="md-table">
-          <tbody>
-            <tr><td class="md-syntax"># Heading 1</td><td class="md-desc">H1</td></tr>
-            <tr><td class="md-syntax">## Heading 2</td><td class="md-desc">H2</td></tr>
-            <tr><td class="md-syntax">### Heading 3</td><td class="md-desc">H3</td></tr>
-            <tr class="md-sep"><td colspan="2"></td></tr>
-            <tr><td class="md-syntax">**bold**</td><td class="md-desc"><strong>bold</strong></td></tr>
-            <tr><td class="md-syntax">*italic*</td><td class="md-desc"><em>italic</em></td></tr>
-            <tr><td class="md-syntax">~~strike~~</td><td class="md-desc"><s>strike</s></td></tr>
-            <tr><td class="md-syntax">`code`</td><td class="md-desc"><code>code</code></td></tr>
-            <tr class="md-sep"><td colspan="2"></td></tr>
-            <tr><td class="md-syntax">- item</td><td class="md-desc">Bullet list</td></tr>
-            <tr><td class="md-syntax">1. item</td><td class="md-desc">Numbered list</td></tr>
-            <tr><td class="md-syntax">> text</td><td class="md-desc">Blockquote</td></tr>
-            <tr class="md-sep"><td colspan="2"></td></tr>
-            <tr><td class="md-syntax">---</td><td class="md-desc">Horizontal rule</td></tr>
-            <tr><td class="md-syntax">[text](url)</td><td class="md-desc">Link</td></tr>
-          </tbody>
-        </table>
-        <button class="btn" on:click={() => showMarkdownGuide = false}>OK</button>
+      <div class="window-pane confirm-body">
+        <p>You will lose your current work. Are you sure?</p>
+        <div class="confirm-buttons">
+          <button class="btn" on:click={confirmYes}>Yes</button>
+          <button class="btn" on:click={confirmNo}>No</button>
+        </div>
       </div>
     </div>
   </div>
@@ -241,56 +206,27 @@
     color: #fff;
   }
 
-  .menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    background: #fff;
-    border: 1px solid #000;
-    box-shadow: 2px 2px 0 #000;
-    list-style: none;
-    min-width: 160px;
-    padding: 2px 0;
-    z-index: 200;
-    color: #000;
-  }
-
-  .menu-item {
-    padding: 3px 20px;
-    font-size: 14px;
-    cursor: default;
-    white-space: nowrap;
-  }
-
-  .menu-item:hover:not(.disabled) {
-    background: #000;
-    color: #fff;
-  }
-
-  .menu-item.disabled {
-    color: #888;
-    cursor: default;
-  }
-
-  .menu-separator {
-    height: 1px;
-    background: #888;
-    margin: 2px 0;
-  }
-
   .menu-bar-right {
     font-size: 14px;
-    padding-right: 24px;
+    padding-right: 12px;
   }
 
   .menu-bar-clock {
     cursor: default;
   }
 
-  .menu-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
+  @media (max-width: 480px) {
+    .menu-bar {
+      padding: 0 4px 0 0;
+    }
+
+    .menu-bar-item {
+      padding: 2px 6px 2px 4px;
+    }
+
+    .menu-bar-right {
+      padding-right: 4px;
+    }
   }
 
   /* About dialog */
@@ -306,6 +242,7 @@
 
   .about-dialog {
     width: 360px;
+    max-width: calc(100vw - 32px);
   }
 
   .about-body {
@@ -342,51 +279,25 @@
     margin-top: 8px;
   }
 
-  /* Markdown Guide dialog */
-  .md-guide-dialog {
-    width: 340px;
+  /* Confirm dialog */
+  .confirm-dialog {
+    width: 280px;
+    max-width: calc(100vw - 32px);
   }
 
-  .md-guide-body {
-    padding: 12px 20px 16px;
+  .confirm-body {
+    padding: 16px 20px;
     display: flex;
     flex-direction: column;
     gap: 12px;
     font-size: 13px;
     align-items: center;
+    text-align: center;
   }
 
-  .md-table {
-    width: 100%;
-    border-collapse: collapse;
+  .confirm-buttons {
+    display: flex;
+    gap: 8px;
   }
 
-  .md-table td {
-    padding: 2px 8px;
-    vertical-align: middle;
-  }
-
-  .md-syntax {
-    font-family: Monaco, Menlo, monospace;
-    font-size: 14px !important;
-    white-space: nowrap;
-    width: 50%;
-  }
-
-  .md-desc {
-    font-size: 14px !important;
-  }
-
-  .md-desc {
-    color: #333;
-  }
-
-  .md-sep td {
-    padding: 3px 0;
-    border-bottom: 1px solid #ccc;
-  }
-
-  .md-guide-body .btn {
-    margin-top: 4px;
-  }
 </style>

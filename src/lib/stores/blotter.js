@@ -5,37 +5,39 @@ const DB_NAME = 'hotdesk';
 const STORE_NAME = 'blotter';
 const KEY = 'content';
 
-const WELCOME_TEXT = `## Welcome to Hotdesk v1.0
+const WELCOME_TEXT = `# Welcome to Hotdesk
 
-The web should be a place to create, not just browse. **Hotdesk** is a "read-write" home page: a private space to think, link and build. 
+The web should be a place to create, not just browse. 
 
----
-
-### Getting started. 
-
-Select **New** to open a blank page, or toggle **Markdown** to edit this text.
-
-When you are ready to move your notes, use **File > Save** to export your work as a universal \`.md\` file.
+**Hotdesk** is a "read-write" home page: a minimal notepad to think, link and build. 
 
 ---
 
-### How to use this space
+## How to use this space
 
-Hotdesk is a **Markdown-enabled** editor. As you type, your work is saved automatically to your browser's local storage. 
+As you type, your work is saved automatically to your browser's local storage. 
 
-*   **Persistence:** Your text remains here even if you close the tab, restart your computer or go offline.
+*   **Persistence:** Your text remains here if you close the tab, restart your device or go offline.
 *   **Focus:** Use this as a scratchpad for daily tasks, a personal journal or a library for your most-used links.
-*   **Privacy:** No tracking and no cloud. Your data doesn't leave your device.
+*   **Privacy:** No tracking. Your data doesn't leave your device, unless you share it.
 
 ---
 
-### Markdown Cheat Sheet
+## Getting started. 
 
-Structure your thoughts with simple shortcuts:
-*   Use \`#\` for headers
-*   Use \`**bold**\` for **emphasis**
-*   Use \`*\` or \`-\` for bulleted lists
-*   Use \`[Link Name](URL)\` to create links
+Select **New** to open a blank page, or start writing below. Use the toolbar to apply formatting. Your work is saved automatically.
+
+When you are ready to share your notes, use **File > Save** to export your work as a universal \`.md\` file.
+
+---
+
+## Formatting toolbar
+
+Use the toolbar to apply formatting to selected text, or select before typing:
+*   **B**, *I*, <u>U</u>, ~~S~~ — inline styles (bold, italic, underline, strikethrough)
+*   **H1**, **H2**, **¶** — headings and body text
+*   **•**, **1.**, **"** — lists and blockquotes
+*   Type \`--\` on a blank line to insert a horizontal rule
 
 ---
 

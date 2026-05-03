@@ -3,6 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  base: '/hotdesk/',
   plugins: [
     svelte(),
     VitePWA({
@@ -11,21 +12,28 @@ export default defineConfig({
         name: 'Hotdesk',
         short_name: 'Hotdesk',
         description: 'A persistent, distraction-free notepad for your new tab.',
-        start_url: '/',
+        scope: '/hotdesk/',
+        start_url: '/hotdesk/',
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#c0c0c0',
         icons: [
           {
-            src: '/icons/icon-192.png',
+            src: '/hotdesk/icons/icon-192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '/icons/icon-512.png',
+            src: '/hotdesk/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/hotdesk/icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },

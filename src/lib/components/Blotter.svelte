@@ -143,6 +143,59 @@
     }
   }
 
+  function normalizeEditorText(text) {
+    return text
+      .replace(/\u00a0/g, ' ')
+      .replace(/\u200b/g, '')
+      .trim();
+  }
+
+  function insertHorizontalRule(target, selection) {
+    const hr = document.createElement('hr');
+    const p = document.createElement('p');
+    p.innerHTML = '<br>';
+
+    if (target === editor) {
+      editor.replaceChildren(hr, p);
+    } else {
+      target.after(hr, p);
+      target.remove();
+    }
+
+    const range = document.createRange();
+    range.setStart(p, 0);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function findRuleMarkerTarget(selection) {
+    if (!selection?.rangeCount || !editor) return null;
+
+    const block = findBlock(selection.getRangeAt(0).startContainer);
+    if (block && normalizeEditorText(block.textContent) === '--') {
+      return block;
+    }
+
+    if (normalizeEditorText(editor.textContent || '') !== '--') {
+      return null;
+    }
+
+    const onlyTextAtRoot = Array.from(editor.childNodes).every(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return normalizeEditorText(node.textContent || '') === '--' || normalizeEditorText(node.textContent || '') === '';
+      }
+
+      if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'BR') {
+        return true;
+      }
+
+      return false;
+    });
+
+    return onlyTextAtRoot ? editor : null;
+  }
+
   // ── Input handler ───────────────────────────────────────────────────────────
   function handleInput() {
     if (!editor) return;
@@ -150,18 +203,9 @@
     // Auto-convert: a block containing only "--" → <hr>
     const sel = window.getSelection();
     if (sel?.rangeCount) {
-      const blk = findBlock(sel.getRangeAt(0).startContainer);
-      if (blk && blk.textContent.trim() === '--') {
-        const hr = document.createElement('hr');
-        const p  = document.createElement('p');
-        p.innerHTML = '<br>';
-        blk.after(hr, p);
-        blk.remove();
-        const r = document.createRange();
-        r.setStart(p, 0);
-        r.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(r);
+      const ruleTarget = findRuleMarkerTarget(sel);
+      if (ruleTarget) {
+        insertHorizontalRule(ruleTarget, sel);
       }
     }
 
@@ -350,6 +394,37 @@
     return null;
   }
 
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function applyMultilineList(tagName) {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return false;
+
+    const range = sel.getRangeAt(0);
+    if (range.collapsed) return false;
+
+    const text = range.toString().replace(/\u00a0/g, ' ');
+    if (!/[\r\n]/.test(text)) return false;
+
+    const lines = text
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    if (!lines.length) return false;
+
+    const html = `<${tagName}>${lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</${tagName}>`;
+    document.execCommand('insertHTML', false, html);
+    return true;
+  }
+
   // ── Formatting ──────────────────────────────────────────────────────────────
   function applyFormat(fmt) {
     if (!editor) return;
@@ -360,8 +435,16 @@
       case 'italic':        document.execCommand('italic',              false); break;
       case 'underline':     document.execCommand('underline',           false); break;
       case 'strikethrough': document.execCommand('strikeThrough',       false); break;
-      case 'bullet':        document.execCommand('insertUnorderedList', false); break;
-      case 'ordered':       document.execCommand('insertOrderedList',   false); break;
+      case 'bullet':
+        if (!applyMultilineList('ul')) {
+          document.execCommand('insertUnorderedList', false);
+        }
+        break;
+      case 'ordered':
+        if (!applyMultilineList('ol')) {
+          document.execCommand('insertOrderedList', false);
+        }
+        break;
       case 'body':          document.execCommand('formatBlock',         false, 'p'); break;
       case 'h1': {
         const cur = document.queryCommandValue('formatBlock').toLowerCase();

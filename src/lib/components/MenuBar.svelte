@@ -1,8 +1,25 @@
 <script>
-  import { blotter } from '../stores/blotter.js';
+  import { onMount } from 'svelte';
+  import { blotter, persistence } from '../stores/blotter.js';
 
   let showAbout = false;
   let confirmAction = null; // 'new' | 'reset' | null
+  let clock = '';
+
+  function updateClock() {
+    clock = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  }
+
+  onMount(() => {
+    updateClock();
+    const timer = window.setInterval(updateClock, 1000);
+
+    return () => window.clearInterval(timer);
+  });
 
   function closeAll() {}
 
@@ -87,44 +104,36 @@
   on:change={onFileSelected}
 />
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-
 <!-- System.css menu bar -->
 <div class="menu-bar">
   <div class="menu-bar-left">
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="menu-bar-item" on:click={handleNew}>New</div>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="menu-bar-item" on:click={handleReset}>Reset</div>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="menu-bar-item" on:click={handleSave}>Save</div>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="menu-bar-item" on:click={handleImport}>Load</div>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="menu-bar-item" on:click={handleAbout}>About</div>
+    <button type="button" class="menu-bar-item" on:click={handleNew}>New</button>
+    <button type="button" class="menu-bar-item" on:click={handleReset}>Reset</button>
+    <button type="button" class="menu-bar-item" on:click={handleSave}>Save</button>
+    <button type="button" class="menu-bar-item" on:click={handleImport}>Load</button>
+    <button type="button" class="menu-bar-item" on:click={handleAbout}>About</button>
   </div>
 
   <div class="menu-bar-right">
-    <span class="menu-bar-clock">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+    {#if $persistence.message}
+      <span
+        class="menu-bar-status"
+        class:menu-bar-status-warning={$persistence.mode !== 'persistent'}
+        aria-live="polite"
+        title={$persistence.message}
+      >{$persistence.mode === 'memory' ? 'Memory only' : 'Fallback storage'}</span>
+    {/if}
+    <span class="menu-bar-clock" aria-label="Current time">{clock}</span>
   </div>
 </div>
 
 <!-- Confirm dialog -->
 {#if confirmAction}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="about-overlay" on:click={confirmNo}>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="window confirm-dialog" on:click|stopPropagation>
+  <div class="about-overlay" role="presentation">
+    <button type="button" class="dialog-backdrop" aria-label="Close confirmation dialog" on:click={confirmNo}></button>
+    <div class="window confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
       <div class="title-bar">
-        <span class="title">{confirmAction === 'new' ? 'New' : 'Reset'}</span>
+        <span class="title" id="confirm-title">{confirmAction === 'new' ? 'New' : 'Reset'}</span>
       </div>
       <div class="window-pane confirm-body">
         <p>You will lose your current work. Are you sure?</p>
@@ -139,15 +148,12 @@
 
 <!-- About dialog -->
 {#if showAbout}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="about-overlay" on:click={() => showAbout = false}>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="window about-dialog" on:click|stopPropagation>
+  <div class="about-overlay" role="presentation">
+    <button type="button" class="dialog-backdrop" aria-label="Close about dialog" on:click={() => showAbout = false}></button>
+    <div class="window about-dialog" role="dialog" aria-modal="true" aria-labelledby="about-title">
       <div class="title-bar">
         <button class="close" aria-label="Close" on:click={() => showAbout = false}></button>
-        <span class="title">About Hotdesk</span>
+        <span class="title" id="about-title">About Hotdesk</span>
       </div>
       <div class="window-pane about-body">
         <p><strong>Hotdesk v1.0</strong></p>
@@ -198,21 +204,41 @@
     cursor: default;
     font-size: 14px;
     white-space: nowrap;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
   }
 
   .menu-bar-item:hover,
-  .menu-bar-item:focus-within {
+  .menu-bar-item:focus-visible {
     background: #000;
     color: #fff;
+    outline: none;
   }
 
   .menu-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     font-size: 14px;
     padding-right: 12px;
   }
 
+  .menu-bar-status {
+    max-width: min(40vw, 280px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .menu-bar-status-warning {
+    color: #7a1f1f;
+  }
+
   .menu-bar-clock {
     cursor: default;
+    min-width: 3.5ch;
   }
 
   @media (max-width: 480px) {
@@ -240,9 +266,19 @@
     background: transparent;
   }
 
+  .dialog-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: transparent;
+    padding: 0;
+  }
+
   .about-dialog {
     width: 360px;
     max-width: calc(100vw - 32px);
+    position: relative;
+    z-index: 1;
   }
 
   .about-body {
@@ -283,6 +319,8 @@
   .confirm-dialog {
     width: 280px;
     max-width: calc(100vw - 32px);
+    position: relative;
+    z-index: 1;
   }
 
   .confirm-body {

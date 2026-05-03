@@ -4,6 +4,7 @@ import { openDB } from 'idb';
 const DB_NAME = 'hotdesk';
 const STORE_NAME = 'blotter';
 const KEY = 'content';
+const DRAFT_KEY = 'hotdesk:draft';
 
 const WELCOME_TEXT = `# Welcome to Hotdesk
 
@@ -45,56 +46,147 @@ Use the toolbar to apply formatting to selected text, or select before typing:
 > A persistent, distraction-free notepad by Lewis Dryburgh.`;
 
 let db;
+let saveTimer;
+let latestValue = '';
+let lifecycleBound = false;
+const storageSupport = {
+  indexedDB: null,
+  localStorage: null
+};
+
+export const persistence = writable({
+  mode: 'persistent',
+  message: ''
+});
+
+function updatePersistence() {
+  const { indexedDB, localStorage } = storageSupport;
+
+  if (indexedDB === false && localStorage === false) {
+    persistence.set({
+      mode: 'memory',
+      message: 'Storage is unavailable. This session will reset when you close the tab.'
+    });
+    return;
+  }
+
+  if (indexedDB === false) {
+    persistence.set({
+      mode: 'degraded',
+      message: 'Using fallback browser storage. Recent work will still persist, but IndexedDB is unavailable.'
+    });
+    return;
+  }
+
+  persistence.set({
+    mode: 'persistent',
+    message: ''
+  });
+}
+
+function markStorage(kind, ok) {
+  storageSupport[kind] = ok;
+  updatePersistence();
+}
+
+function readDraft() {
+  try {
+    const value = window.localStorage.getItem(DRAFT_KEY);
+    markStorage('localStorage', true);
+    return value;
+  } catch {
+    markStorage('localStorage', false);
+    return null;
+  }
+}
+
+function writeDraft(value) {
+  try {
+    window.localStorage.setItem(DRAFT_KEY, value);
+    markStorage('localStorage', true);
+    return true;
+  } catch {
+    markStorage('localStorage', false);
+    return false;
+  }
+}
+
+function bindLifecycleFlush() {
+  if (lifecycleBound || typeof window === 'undefined') return;
+
+  const flushDraft = () => {
+    clearTimeout(saveTimer);
+    void save(latestValue);
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushDraft();
+    }
+  });
+  window.addEventListener('pagehide', flushDraft);
+  lifecycleBound = true;
+}
 
 async function getDB() {
   if (!db) {
-    db = await openDB(DB_NAME, 1, {
-      upgrade(database) {
-        database.createObjectStore(STORE_NAME);
-      }
-    });
+    try {
+      db = await openDB(DB_NAME, 1, {
+        upgrade(database) {
+          database.createObjectStore(STORE_NAME);
+        }
+      });
+      markStorage('indexedDB', true);
+    } catch (error) {
+      markStorage('indexedDB', false);
+      throw error;
+    }
   }
   return db;
 }
 
 async function load() {
+  const draft = typeof window === 'undefined' ? null : readDraft();
+  if (draft !== null) {
+    return { content: draft, isFirstVisit: false };
+  }
+
   try {
     const database = await getDB();
     const stored = await database.get(STORE_NAME, KEY);
-    if (stored !== undefined) return stored;
+    if (stored !== undefined) {
+      writeDraft(stored);
+      return { content: stored, isFirstVisit: false };
+    }
     await database.put(STORE_NAME, WELCOME_TEXT, KEY);
-    return WELCOME_TEXT;
+    markStorage('indexedDB', true);
+    writeDraft(WELCOME_TEXT);
+    return { content: WELCOME_TEXT, isFirstVisit: true };
   } catch {
-    return WELCOME_TEXT;
+    return { content: WELCOME_TEXT, isFirstVisit: false };
   }
 }
 
 async function save(value) {
+  latestValue = value;
+  writeDraft(value);
+
   try {
     const database = await getDB();
     await database.put(STORE_NAME, value, KEY);
+    markStorage('indexedDB', true);
   } catch {
-    // Silently fail — content remains in memory
-  }
-}
-
-async function clear() {
-  try {
-    const database = await getDB();
-    await database.delete(STORE_NAME, KEY);
-  } catch {
-    // ignore
+    markStorage('indexedDB', false);
   }
 }
 
 // Create the store with an empty initial value
 const { subscribe, set, update } = writable('');
 
-// Debounce timer
-let saveTimer;
-
 function debouncedSet(value) {
+  latestValue = value;
   set(value);
+  writeDraft(value);
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => save(value), 400);
 }
@@ -107,21 +199,27 @@ async function requestPersistence() {
 
 // Initialise from IndexedDB — resolves true if this was a first visit
 export const firstVisit = Promise.all([load(), requestPersistence()]).then(([content]) => {
-  set(content);
-  return content === WELCOME_TEXT;
+  latestValue = content.content;
+  set(content.content);
+  bindLifecycleFlush();
+  return content.isFirstVisit;
 });
 
 export const blotter = {
   subscribe,
   set: debouncedSet,
   async clear() {
+    latestValue = '';
     set('');
+    writeDraft('');
     clearTimeout(saveTimer);
-    await clear();
+    await save('');
   },
   async reset() {
+    latestValue = WELCOME_TEXT;
     clearTimeout(saveTimer);
     set(WELCOME_TEXT);
+    writeDraft(WELCOME_TEXT);
     await save(WELCOME_TEXT);
   }
 };

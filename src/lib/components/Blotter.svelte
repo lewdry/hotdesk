@@ -58,6 +58,8 @@
       case 'h2': return `## ${kids().trim()}\n\n`;
       case 'h3': return `### ${kids().trim()}\n\n`;
       case 'h4': return `#### ${kids().trim()}\n\n`;
+      case 'h5': return `##### ${kids().trim()}\n\n`;
+      case 'h6': return `###### ${kids().trim()}\n\n`;
       case 'strong':
       case 'b': { const c = kids(); return c.trim() ? `**${c}**` : ''; }
       case 'em':
@@ -74,7 +76,19 @@
       case 'ul': {
         const lis = [...node.children].filter(n => n.tagName === 'LI');
         return lis.length
-          ? lis.map(li => `- ${[...li.childNodes].map(walk).join('').trim()}`).join('\n') + '\n\n'
+          ? lis.map(li => {
+              // Task list item: contains a checkbox input
+              const cb = li.querySelector('input[type="checkbox"]');
+              if (cb) {
+                const checked = cb.checked ? 'x' : ' ';
+                // Text content without the checkbox
+                const text = [...li.childNodes]
+                  .filter(n => !(n.nodeType === Node.ELEMENT_NODE && n.tagName === 'INPUT'))
+                  .map(walk).join('').trim();
+                return `- [${checked}] ${text}`;
+              }
+              return `- ${[...li.childNodes].map(walk).join('').trim()}`;
+            }).join('\n') + '\n\n'
           : kids();
       }
       case 'ol': {
@@ -84,6 +98,34 @@
           : kids();
       }
       case 'li': return kids();
+      case 'input': {
+        // Handled inside ul case; skip here to avoid duplicate text
+        return '';
+      }
+      case 'img': {
+        const alt = node.getAttribute('alt') || '';
+        const src = node.getAttribute('src') || '';
+        return `![${alt}](${src})`;
+      }
+      case 'table': {
+        const rows = [...node.querySelectorAll('tr')];
+        if (!rows.length) return kids();
+        const toText = cell => walk(cell).trim().replace(/\|/g, '\\|');
+        const headerRow = rows[0];
+        const headers = [...headerRow.querySelectorAll('th, td')].map(toText);
+        const separator = headers.map(() => '---');
+        const bodyRows = rows.slice(1).map(row =>
+          [...row.querySelectorAll('th, td')].map(toText)
+        );
+        const fmt = cols => '| ' + cols.join(' | ') + ' |';
+        return [fmt(headers), fmt(separator), ...bodyRows.map(fmt)].join('\n') + '\n\n';
+      }
+      case 'thead':
+      case 'tbody':
+      case 'tfoot':
+      case 'tr':
+      case 'th':
+      case 'td': return kids();
       case 'blockquote': {
         const c = kids().trim();
         return c ? c.split('\n').map(l => `> ${l}`).join('\n') + '\n\n' : '';
@@ -151,6 +193,33 @@
 
   function handleKeydown(e) {
     if (e.key !== ' ' && e.key !== 'Enter') return;
+
+    // Escape blockquote on Enter from a blank line (mirrors h1/list behaviour)
+    if (e.key === 'Enter' && inBlockquote()) {
+      const sel0 = window.getSelection();
+      if (sel0?.rangeCount) {
+        const blk = findBlock(sel0.getRangeAt(0).startContainer);
+        if (blk && blk.textContent.trim() === '') {
+          e.preventDefault();
+          const bq = blk.closest('blockquote');
+          blk.remove();
+          const p = document.createElement('p');
+          p.innerHTML = '<br>';
+          if (bq.children.length === 0) {
+            bq.replaceWith(p);
+          } else {
+            bq.after(p);
+          }
+          const r = document.createRange();
+          r.setStart(p, 0);
+          r.collapse(true);
+          sel0.removeAllRanges();
+          sel0.addRange(r);
+          handleInput();
+          return;
+        }
+      }
+    }
 
     const sel = window.getSelection();
     if (!sel?.rangeCount) return;

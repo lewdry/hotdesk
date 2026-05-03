@@ -99,8 +99,14 @@ function debouncedSet(value) {
   saveTimer = setTimeout(() => save(value), 400);
 }
 
+async function requestPersistence() {
+  if (navigator.storage?.persist) {
+    await navigator.storage.persist();
+  }
+}
+
 // Initialise from IndexedDB — resolves true if this was a first visit
-export const firstVisit = load().then(content => {
+export const firstVisit = Promise.all([load(), requestPersistence()]).then(([content]) => {
   set(content);
   return content === WELCOME_TEXT;
 });

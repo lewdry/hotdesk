@@ -72,7 +72,11 @@
     return () => window.clearInterval(timer);
   });
 
-  function closeAll() {}
+  function closeAll() {
+    showAbout = false;
+    confirmAction = null;
+    showPrivateWarning = false;
+  }
 
   function handleNew() {
     closeAll();

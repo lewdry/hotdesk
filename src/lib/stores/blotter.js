@@ -8,17 +8,19 @@ const DRAFT_KEY = 'hotdesk:draft';
 
 const WELCOME_TEXT = `# Welcome to Hotdesk
 
-A local-first, minimal notepad.
+A local, minimal notepad.
 
-**Hotdesk** is a private "read-write" home page. It is a tool for thinking, jotting and drafting without the cloud.
+**Hotdesk** is a private "read-write" home page. 
+
+It is a tool for thinking, jotting and drafting without the cloud.
 
 ---
 
 ## How it works
 
-*   **Automatic Saving:** Your work is stored in your browser's local storage as you type.
-*   **Persistence:** Your text remains here if you close the tab, restart your device or go offline.
-*   **Privacy:** No tracking and no sync. Your data never leaves this device. 
+*   **Auto Save:** Your work is stored in your browser's local storage as you type.
+*   **Persistent:** Your text remains here if you close the tab, restart your device or go offline.
+*   **Private:** No tracking and no syncing. Your data stays on this device by default.
 
 ---
 
@@ -40,8 +42,7 @@ Use the toolbar to style your text:
 
 ---
 
-> **Hotdesk**
-> A persistent, distraction-free notepad by Lewis Dryburgh.`;
+> © 2026 Hotdesk`;
 
 let db;
 let saveTimer;
@@ -125,7 +126,7 @@ async function detectPrivateBrowsing() {
   if (navigator.storage?.estimate) {
     try {
       const { quota } = await navigator.storage.estimate();
-      if (typeof quota === 'number' && quota > 0 && quota < 120 * 1024 * 1024) {
+      if (typeof quota === 'number' && quota > 0 && quota < 10 * 1024 * 1024) {
         return true;
       }
     } catch {

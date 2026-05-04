@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { blotter, persistence } from '../stores/blotter.js';
+  import { isDark, toggleTheme } from '../stores/theme.js';
 
   let showAbout = false;
   let showPrivateWarning = false;
@@ -159,6 +160,13 @@
           ? 'Private window'
           : 'Fallback storage'}</span>
     {/if}
+    <button
+      type="button"
+      class="menu-bar-item"
+      on:click={toggleTheme}
+      title={$isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={$isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+    >{$isDark ? '☾' : '☀'}</button>
     <span class="menu-bar-clock" aria-label="Current time">{clock}</span>
   </div>
 </div>
@@ -220,7 +228,7 @@
         </div>
         <div class="about-section">
           <p class="about-label">Inspiration:</p>
-          <p>Based on the "read-write" web philosophy of Tim Berners-Lee.</p>
+          <p>Based on the original "read-write" web vision of Tim Berners-Lee.</p>
         </div>
         <div class="about-section">
           <p>Hotdesk is local-first. Your notes are stored in your browser and never leave your device, unless you share them.</p>
@@ -263,8 +271,8 @@
 
   .menu-bar-item:hover,
   .menu-bar-item:focus-visible {
-    background: #000;
-    color: #fff;
+    background: var(--color-menu-hover-bg);
+    color: var(--color-menu-hover-text);
     outline: none;
   }
 
@@ -284,7 +292,7 @@
   }
 
   .menu-bar-status-warning {
-    color: #7a1f1f;
+    color: var(--color-text-warning);
   }
 
   .menu-bar-clock {

@@ -48,9 +48,9 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: #fff;
+    background: var(--color-surface);
     /* System.css sunken/inset look */
-    box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #ffffff;
+    box-shadow: inset 1px 1px 0 var(--color-shadow-lo), inset -1px -1px 0 var(--color-shadow-hi);
   }
 
   @media (max-width: 480px) {

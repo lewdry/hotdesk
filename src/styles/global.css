@@ -33,7 +33,47 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Global layout — minimal, only what system.css doesn't cover */
+/* ── Colour tokens ──────────────────────────────────────────────────────────── */
+
+:root {
+  --color-bg:               #c0c0c0;
+  --color-surface:          #ffffff;
+  --color-toolbar:          #d4d0c8;
+  --color-toolbar-pressed:  #b8b4ac;
+  --color-code-bg:          #e0e0e0;
+  --color-text:             #000000;
+  --color-text-muted:       #444444;
+  --color-text-placeholder: #888888;
+  --color-text-link:        #444444;
+  --color-text-warning:     #7a1f1f;
+  --color-border:           #808080;
+  --color-border-code:      #a0a0a0;
+  --color-shadow-hi:        #ffffff;
+  --color-shadow-lo:        #808080;
+  --color-menu-hover-bg:    #000000;
+  --color-menu-hover-text:  #ffffff;
+}
+
+[data-theme="dark"] {
+  --color-bg:               #2A2A2A;
+  --color-surface:          #1A1A1A;
+  --color-toolbar:          #333333;
+  --color-toolbar-pressed:  #242424;
+  --color-code-bg:          #2C2C2C;
+  --color-text:             #E0E0E0;
+  --color-text-muted:       #999999;
+  --color-text-placeholder: #505050;
+  --color-text-link:        #AAAAAA;
+  --color-text-warning:     #CC6666;
+  --color-border:           #555555;
+  --color-border-code:      #404040;
+  --color-shadow-hi:        #505050;
+  --color-shadow-lo:        #111111;
+  --color-menu-hover-bg:    #E0E0E0;
+  --color-menu-hover-text:  #1A1A1A;
+}
+
+/* ── Global layout — minimal, only what system.css doesn't cover ─────────── */
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -47,7 +87,8 @@ html, body, #app {
 }
 
 body {
-  background-color: #c0c0c0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
 /* Override system.css textarea/input defaults for the blotter */
@@ -61,7 +102,7 @@ body {
   font-family: 'Sora', Geneva, 'Helvetica Neue', sans-serif;
   font-size: 14px;
   line-height: 1.7;
-  color: #000000;
+  color: var(--color-text);
   padding: 10px 32px 24px;
   overflow-y: auto;
   /* Smooth scroll for typewriter effect */
@@ -69,24 +110,59 @@ body {
 }
 
 .blotter-area::placeholder {
-  color: #888;
+  color: var(--color-text-placeholder);
 }
 
 /* Prevent system.css from inverting textarea on focus */
 .blotter-area:focus {
-  background: #ffffff !important;
-  color: #000000 !important;
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
 }
 
 /* Links in the blotter */
 .blotter-area a {
-  color: #444444 !important;
+  color: var(--color-text-link) !important;
   text-decoration: underline !important;
   cursor: pointer !important;
 }
 
 .blotter-area a:hover {
   cursor: pointer !important;
+}
+
+/* ── System.css dark mode overrides ─────────────────────────────────────── */
+
+[data-theme="dark"] body {
+  /* Override the system.css dot-pattern gradient entirely */
+  background: var(--color-bg);
+}
+
+[data-theme="dark"] .window {
+  background: var(--color-toolbar);
+  color: var(--color-text);
+  box-shadow: inset -1px -1px 0 var(--color-shadow-lo), inset 1px 1px 0 var(--color-shadow-hi);
+}
+
+[data-theme="dark"] .window-pane {
+  background: var(--color-toolbar);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .title-bar .title {
+  /* Override system.css hardcoded white chip */
+  background: var(--color-toolbar);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .btn {
+  background: var(--color-toolbar);
+  color: var(--color-text);
+  box-shadow: inset -1px -1px 0 var(--color-shadow-lo), inset 1px 1px 0 var(--color-shadow-hi);
+}
+
+[data-theme="dark"] .btn:active {
+  box-shadow: inset 1px 1px 0 var(--color-shadow-lo), inset -1px -1px 0 var(--color-shadow-hi);
+  background: var(--color-toolbar-pressed);
 }

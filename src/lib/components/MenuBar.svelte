@@ -85,9 +85,10 @@
 
   function buildFilename(content) {
     const words = content
+      .slice(0, 500)
       .replace(/[#*_~`>[\]()!]+/g, ' ')
       .split(/\s+/)
-      .map(w => w.replace(/[^a-z0-9]/gi, '').toLowerCase())
+      .map(w => w.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 20))
       .filter(Boolean)
       .slice(0, 3);
     const now = new Date();
@@ -162,11 +163,11 @@
     {/if}
     <button
       type="button"
-      class="menu-bar-item"
+      class="menu-bar-item menu-bar-theme-toggle"
       on:click={toggleTheme}
       title={$isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       aria-label={$isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-    >{$isDark ? '☾' : '☀'}</button>
+    >{$isDark ? '☾︎' : '☀︎'}</button>
     <span class="menu-bar-clock" aria-label="Current time">{clock}</span>
   </div>
 </div>
@@ -269,11 +270,26 @@
     font: inherit;
   }
 
-  .menu-bar-item:hover,
+  @media (hover: hover) {
+    .menu-bar-item:hover {
+      background: var(--color-menu-hover-bg);
+      color: var(--color-menu-hover-text);
+      outline: none;
+    }
+  }
+
   .menu-bar-item:focus-visible {
     background: var(--color-menu-hover-bg);
     color: var(--color-menu-hover-text);
     outline: none;
+  }
+
+  .menu-bar-theme-toggle {
+    font-variant-emoji: text;
+    width: 2ch;
+    text-align: center;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .menu-bar-right {
@@ -348,6 +364,7 @@
     font-size: 13px;
     align-items: center;
     text-align: center;
+    overflow-y: auto;
   }
 
   .about-section {
@@ -390,6 +407,7 @@
     font-size: 13px;
     align-items: center;
     text-align: center;
+    overflow-y: auto;
   }
 
   .confirm-buttons {

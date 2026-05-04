@@ -6,6 +6,7 @@
 
   let editor;
   let lastMd = '';
+  let activeBlock = null;
 
   // ── Bootstrap ───────────────────────────────────────────────────────────────
   onMount(() => {
@@ -214,16 +215,25 @@
     refreshActive();
   }
 
-  // Paste as plain text to avoid injecting foreign HTML
+  // Detect likely markdown: headings, emphasis, lists, links, blockquotes, code, hr
+  const MD_RE = /^#{1,6} |\*{1,2}\S|~~\S|\*{2}|^[-*+] |\d+\. |^> |`[^`\n]|!\[|\[.+?\]\(|^---$/m;
+
   function handlePaste(e) {
     e.preventDefault();
     const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-    document.execCommand('insertText', false, text);
+
+    if (MD_RE.test(text)) {
+      const html = DOMPurify.sanitize(marked.parse(text, { breaks: true }));
+      document.execCommand('insertHTML', false, html);
+    } else {
+      document.execCommand('insertText', false, text);
+    }
   }
 
   // Re-render on blur so bare URLs typed by the user become clickable links
   function handleBlur() {
     if (!editor) return;
+    activeBlock = null;
     const md = htmlToMd(editor.innerHTML);
     const html = DOMPurify.sanitize(marked.parse(md || '', { breaks: true }));
     const newHtml = html || '<p><br></p>';
@@ -364,6 +374,35 @@
   // ── Active format state ─────────────────────────────────────────────────────
   let active = {};
 
+  // Re-render a single block after the cursor has left it.
+  // Only applies to plain paragraph/div blocks — headings, list items, and
+  // blockquotes are already rendered and must not be re-processed here.
+  function renderBlock(block) {
+    if (!block || !editor.contains(block)) return;
+    const tag = block.tagName?.toUpperCase();
+    if (tag !== 'P' && tag !== 'DIV') return;
+
+    const md = htmlToMd(block.outerHTML).trim();
+    if (!md) return;
+
+    const rendered = DOMPurify.sanitize(marked.parse(md, { breaks: true })).trim();
+    if (!rendered) return;
+
+    const tmp = document.createElement('div');
+    tmp.innerHTML = rendered;
+    if (block.outerHTML === tmp.innerHTML) return;
+
+    const frag = document.createDocumentFragment();
+    while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+    block.replaceWith(frag);
+
+    const newMd = htmlToMd(editor.innerHTML);
+    if (newMd !== lastMd) {
+      lastMd = newMd;
+      blotter.set(newMd);
+    }
+  }
+
   function refreshActive() {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) { active = {}; return; }
@@ -373,6 +412,14 @@
     const el    = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
 
     if (!editor || !editor.contains(el)) return;
+
+    // Detect block change and re-render the block the cursor just left
+    const currentBlock = findBlock(node);
+    if (currentBlock !== activeBlock) {
+      const prev = activeBlock;
+      activeBlock = currentBlock;
+      renderBlock(prev);
+    }
 
     function hasTag(element, ...tags) {
       let n = element;
@@ -651,7 +698,6 @@
 
   .fmt-bold strong   { font-weight: bold;           font-size: 13px; }
   .fmt-italic em     { font-style: italic;           font-size: 13px; font-family: Chicago, Geneva, 'Helvetica Neue', sans-serif; }
-  .fmt-underline u   { text-decoration: underline; }
   .fmt-strike s      { text-decoration: line-through; }
   .fmt-ordered       { font-size: 12px; letter-spacing: -0.5px; }
 

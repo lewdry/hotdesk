@@ -135,8 +135,13 @@ body {
 /* ── System.css dark mode overrides ─────────────────────────────────────── */
 
 [data-theme="dark"] body {
-  /* Override the system.css dot-pattern gradient entirely */
-  background: var(--color-bg);
+  /* Dark dot pattern — fill is --color-bg, dots are noticeably lighter */
+  background:
+    linear-gradient(90deg, var(--color-bg) 21px, transparent 1%) 50%,
+    linear-gradient(var(--color-bg) 21px, transparent 1%) 50%,
+    #555555;
+  background-attachment: fixed;
+  background-size: 22px 22px;
 }
 
 [data-theme="dark"] .window {
@@ -159,10 +164,15 @@ body {
 [data-theme="dark"] .btn {
   background: var(--color-toolbar);
   color: var(--color-text);
-  box-shadow: inset -1px -1px 0 var(--color-shadow-lo), inset 1px 1px 0 var(--color-shadow-hi);
+  border-image: url('/hotdesk/button-dark.svg') 30 stretch;
+  border-style: solid;
+  border-width: 5.5px;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .btn:active {
-  box-shadow: inset 1px 1px 0 var(--color-shadow-lo), inset -1px -1px 0 var(--color-shadow-hi);
   background: var(--color-toolbar-pressed);
+  border-radius: 0;
+  color: var(--color-text);
+  box-shadow: none;
 }

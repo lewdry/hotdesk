@@ -8,36 +8,34 @@ const DRAFT_KEY = 'hotdesk:draft';
 
 const WELCOME_TEXT = `# Welcome to Hotdesk
 
-The web should be a place to create, not just browse. 
+A local-first, minimal notepad.
 
-**Hotdesk** is a "read-write" home page: a minimal notepad to think, link and build. 
+**Hotdesk** is a private "read-write" home page. It is a tool for thinking, jotting and drafting without the cloud.
 
 ---
 
-## How to use this space
+## How it works
 
-As you type, your work is saved automatically to your browser's local storage. 
-
+*   **Automatic Saving:** Your work is stored in your browser's local storage as you type.
 *   **Persistence:** Your text remains here if you close the tab, restart your device or go offline.
-*   **Focus:** Use this as a scratchpad for daily tasks, a journal or a library for links.
-*   **Privacy:** No tracking. Your data doesn't leave your device, unless you share it.
+*   **Privacy:** No tracking and no sync. Your data never leaves this device. 
 
 ---
 
-## Getting started. 
+## Getting started 
 
-Select **New** to open a blank page, or start writing below. Use the toolbar to apply formatting. Your work is saved automatically.
+Delete this text to start fresh, or select **New**.
 
-When you are ready to share your notes, select **Save** to export your work as a universal \`.md\` file.
+If you want to share, select **Save** to export your work as a universal \`.md\` (markdown) file.
 
 ---
 
 ## Formatting toolbar
 
-Use the toolbar to apply formatting to selected text, or select before typing:
-*   **B**, *I*, ~~S~~ — inline styles (bold, italic, strikethrough)
-*   **H1**, **H2**, **¶** — headings and body text
-*   **•**, **1.**, **"** — lists and blockquotes
+Use the toolbar to style your text:
+*   **B**, *I*, ~~S~~ - bold, italic, strikethrough
+*   **H1**, **H2**, **¶** - headings and body text
+*   **•**, **1.**, **"** - lists and blockquotes
 *   Type \`--\` on a blank line to insert a horizontal rule
 
 ---

@@ -1,13 +1,52 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
+  import { get } from 'svelte/store';
   import { blotter, persistence } from '../stores/blotter.js';
   import { isDark, toggleTheme } from '../stores/theme.js';
 
   let showAbout = false;
   let showPrivateWarning = false;
   let privateWarningDismissed = false;
-  let confirmAction = null; // 'new' | 'reset' | null
+  let confirmAction = null; // 'new' | 'reset' | 'load' | null
   let clock = '';
+
+  // ── Focus trap ──────────────────────────────────────────────────────────────
+  // Keeps keyboard focus inside a dialog while it is open.
+  function focusTrap(node) {
+    const FOCUSABLE = [
+      'a[href]', 'button:not([disabled])', 'textarea', 'input', 'select',
+      '[tabindex]:not([tabindex="-1"])'
+    ].join(',');
+
+    function getFocusable() {
+      return Array.from(node.querySelectorAll(FOCUSABLE)).filter(
+        el => !el.closest('[aria-hidden="true"]')
+      );
+    }
+
+    async function init() {
+      await tick(); // wait for DOM to settle
+      const els = getFocusable();
+      if (els.length) els[0].focus();
+    }
+    init();
+
+    function handleKeydown(e) {
+      if (e.key !== 'Tab') return;
+      const els = getFocusable();
+      if (!els.length) { e.preventDefault(); return; }
+      const first = els[0];
+      const last  = els[els.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+      }
+    }
+
+    node.addEventListener('keydown', handleKeydown);
+    return { destroy() { node.removeEventListener('keydown', handleKeydown); } };
+  }
 
   $: if ($persistence.mode === 'private' && !privateWarningDismissed) {
     showPrivateWarning = true;
@@ -48,6 +87,7 @@
   async function confirmYes() {
     if (confirmAction === 'new')   await blotter.clear();
     if (confirmAction === 'reset') await blotter.reset();
+    if (confirmAction === 'load')  fileInput.click();
     confirmAction = null;
   }
 
@@ -69,7 +109,13 @@
 
   function handleImport() {
     closeAll();
-    fileInput.click();
+    // Only warn if the user has actual content that would be overwritten.
+    const current = get(blotter).trim();
+    if (current) {
+      confirmAction = 'load';
+    } else {
+      fileInput.click();
+    }
   }
 
   async function onFileSelected(e) {
@@ -176,9 +222,17 @@
 {#if confirmAction}
   <div class="about-overlay" role="presentation">
     <button type="button" class="dialog-backdrop" aria-label="Close confirmation dialog" on:click={confirmNo}></button>
-    <div class="window confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div
+      class="window confirm-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+      use:focusTrap
+    >
       <div class="title-bar">
-        <span class="title" id="confirm-title">{confirmAction === 'new' ? 'New' : 'Reset'}</span>
+        <span class="title" id="confirm-title">
+          {confirmAction === 'new' ? 'New' : confirmAction === 'reset' ? 'Reset' : 'Load'}
+        </span>
       </div>
       <div class="window-pane confirm-body">
         <p>You will lose your current work. Are you sure?</p>
@@ -193,7 +247,13 @@
 
 {#if showPrivateWarning}
   <div class="about-overlay" role="presentation">
-    <div class="window confirm-dialog private-warning-dialog" role="dialog" aria-modal="true" aria-labelledby="private-warning-title">
+    <div
+      class="window confirm-dialog private-warning-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="private-warning-title"
+      use:focusTrap
+    >
       <div class="title-bar">
         <span class="title" id="private-warning-title">Private/Incognito Mode</span>
       </div>
@@ -211,7 +271,7 @@
 {#if showAbout}
   <div class="about-overlay" role="presentation">
     <button type="button" class="dialog-backdrop" aria-label="Close about dialog" on:click={() => showAbout = false}></button>
-    <div class="window about-dialog" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <div class="window about-dialog" role="dialog" aria-modal="true" aria-labelledby="about-title" use:focusTrap>
       <div class="title-bar">
         <span class="title" id="about-title">About Hotdesk</span>
       </div>

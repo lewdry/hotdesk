@@ -28,14 +28,14 @@ As you type, your work is saved automatically to your browser's local storage.
 
 Select **New** to open a blank page, or start writing below. Use the toolbar to apply formatting. Your work is saved automatically.
 
-When you are ready to share your notes, use **File > Save** to export your work as a universal \`.md\` file.
+When you are ready to share your notes, select **Save** to export your work as a universal \`.md\` file.
 
 ---
 
 ## Formatting toolbar
 
 Use the toolbar to apply formatting to selected text, or select before typing:
-*   **B**, *I*, <u>U</u>, ~~S~~ — inline styles (bold, italic, underline, strikethrough)
+*   **B**, *I*, ~~S~~ — inline styles (bold, italic, strikethrough)
 *   **H1**, **H2**, **¶** — headings and body text
 *   **•**, **1.**, **"** — lists and blockquotes
 *   Type \`--\` on a blank line to insert a horizontal rule

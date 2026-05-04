@@ -82,13 +82,29 @@
 
   let isSaving = false;
 
+  function buildFilename(content) {
+    const words = content
+      .replace(/[#*_~`>[\]()!]+/g, ' ')
+      .split(/\s+/)
+      .map(w => w.replace(/[^a-z0-9]/gi, '').toLowerCase())
+      .filter(Boolean)
+      .slice(0, 3);
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const prefix = words.length ? words.join('-') + '-' : '';
+    return `${prefix}${yy}-${mm}-${dd}.md`;
+  }
+
   async function handleSave() {
     if (isSaving) return;
     isSaving = true;
     closeAll();
     try {
       const content = $blotter;
-      const file = new File([content], 'hotdesk.md', { type: 'text/markdown' });
+      const filename = buildFilename(content);
+      const file = new File([content], filename, { type: 'text/markdown' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({ files: [file], title: 'Hotdesk' });
@@ -101,7 +117,7 @@
       const url = URL.createObjectURL(new Blob([content], { type: 'text/markdown' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'hotdesk.md';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

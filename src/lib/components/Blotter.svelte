@@ -64,7 +64,7 @@
       case 'b': { const c = kids(); return c.trim() ? `**${c}**` : ''; }
       case 'em':
       case 'i': { const c = kids(); return c.trim() ? `*${c}*` : ''; }
-      case 'u': { const c = kids(); return c.trim() ? `<u>${c}</u>` : ''; }
+      case 'u': { return kids(); }
       case 'del':
       case 's':
       case 'strike': { const c = kids(); return c.trim() ? `~~${c}~~` : ''; }
@@ -136,7 +136,6 @@
         if (/font-weight\s*:\s*(bold|700)/i.test(s))          c = `**${c}**`;
         if (/font-style\s*:\s*italic/i.test(s))               c = `*${c}*`;
         if (/text-decoration[^;]*line-through/i.test(s))      c = `~~${c}~~`;
-        if (/text-decoration[^;]*\bunderline\b/i.test(s))     c = `<u>${c}</u>`;
         return c;
       }
       default: return kids();
@@ -398,7 +397,6 @@
     active = {
       bold:          hasTag(el, 'strong', 'b'),
       italic:        hasTag(el, 'em', 'i'),
-      underline:     hasTag(el, 'u'),
       strikethrough: hasTag(el, 'del', 's', 'strike'),
       body:          blockTag === 'p' || blockTag === 'div',
       h1:            blockTag === 'h1',
@@ -468,7 +466,6 @@
     switch (fmt) {
       case 'bold':          document.execCommand('bold',                false); break;
       case 'italic':        document.execCommand('italic',              false); break;
-      case 'underline':     document.execCommand('underline',           false); break;
       case 'strikethrough': document.execCommand('strikeThrough',       false); break;
       case 'bullet':
         if (!applyMultilineList('ul')) {
@@ -535,11 +532,11 @@
   ><em>I</em></button>
 
   <button
-    class="fmt-btn fmt-underline"
-    class:active={active.underline}
-    on:mousedown|preventDefault={() => applyFormat('underline')}
-    title="Underline"
-  ><u>U</u></button>
+    class="fmt-btn fmt-strike"
+    class:active={active.strikethrough}
+    on:mousedown|preventDefault={() => applyFormat('strikethrough')}
+    title="Strikethrough"
+  ><s>S</s></button>
 
   <div class="fmt-sep"></div>
 
@@ -587,14 +584,6 @@
     title="Blockquote"
   >"</button>
 
-  <div class="fmt-sep"></div>
-
-  <button
-    class="fmt-btn fmt-strike"
-    class:active={active.strikethrough}
-    on:mousedown|preventDefault={() => applyFormat('strikethrough')}
-    title="Strikethrough"
-  ><s>S</s></button>
 </div>
 
 <!-- WYSIWYG editor -->
@@ -639,6 +628,7 @@
     font-family: Chicago, Geneva, 'Helvetica Neue', sans-serif;
     background: #d4d0c8;
     border: 1px solid transparent;
+    color: #000000;
     cursor: default;
     user-select: none;
     box-sizing: border-box;
@@ -690,6 +680,7 @@
   @media (max-width: 480px) {
     .blotter-area {
       padding: 0.5rem 0.5rem;
+      font-size: 16px; /* prevent iOS Safari auto-zoom on focus */
     }
   }
 

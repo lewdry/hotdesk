@@ -10,7 +10,6 @@
 
   // ── Bootstrap ───────────────────────────────────────────────────────────────
   onMount(() => {
-    document.execCommand('defaultParagraphSeparator', false, 'p');
     const html = DOMPurify.sanitize(marked.parse($blotter || '', { breaks: true }));
     editor.innerHTML = html || '<p><br></p>';
     lastMd = $blotter;
@@ -224,9 +223,19 @@
 
     if (MD_RE.test(text)) {
       const html = DOMPurify.sanitize(marked.parse(text, { breaks: true }));
-      document.execCommand('insertHTML', false, html);
+      insertFragment(html);
     } else {
-      document.execCommand('insertText', false, text);
+      const sel = window.getSelection();
+      if (sel?.rangeCount) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
     }
   }
 
@@ -330,7 +339,7 @@
     sel.addRange(r);
 
     if (e.key === 'Enter') {
-      document.execCommand('insertParagraph', false);
+      insertNewParagraph();
     }
 
     handleInput();
@@ -483,6 +492,162 @@
       .replace(/'/g, '&#39;');
   }
 
+  // ── Insert / inline / block helpers ────────────────────────────────────────
+
+  // Replace the current selection with parsed HTML nodes.
+  function insertFragment(html) {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const frag = document.createDocumentFragment();
+    let last = null;
+    while (tmp.firstChild) { last = tmp.firstChild; frag.appendChild(last); }
+    range.insertNode(frag);
+    if (last) {
+      const r = document.createRange();
+      r.selectNodeContents(last);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  }
+
+  // Split the current block at the cursor, inserting a new <p> after.
+  function insertNewParagraph() {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const block = findBlock(range.startContainer);
+    if (!block) return;
+
+    const tailRange = document.createRange();
+    tailRange.setStart(range.startContainer, range.startOffset);
+    tailRange.setEnd(block, block.childNodes.length);
+    const extracted = tailRange.extractContents();
+
+    const newP = document.createElement('p');
+    const hasContent = extracted.textContent.trim() || extracted.querySelector('img,br');
+    if (hasContent) {
+      newP.appendChild(extracted);
+    } else {
+      newP.innerHTML = '<br>';
+    }
+
+    if (!block.hasChildNodes() || !block.textContent.trim()) {
+      block.innerHTML = '<br>';
+    }
+
+    block.after(newP);
+
+    const r = document.createRange();
+    r.setStart(newP, 0);
+    r.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+
+  // Toggle an inline wrapper element (strong, em, del) on the current selection.
+  function toggleInlineFormat(tagName, matchTags, isActive) {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    if (range.collapsed) return;
+
+    if (isActive) {
+      let n = range.startContainer;
+      if (n.nodeType === Node.TEXT_NODE) n = n.parentElement;
+      const wrapper = n.closest(matchTags.join(','));
+      if (!wrapper || !editor.contains(wrapper)) return;
+      const frag = document.createDocumentFragment();
+      while (wrapper.firstChild) frag.appendChild(wrapper.firstChild);
+      wrapper.replaceWith(frag);
+    } else {
+      const el = document.createElement(tagName);
+      try {
+        range.surroundContents(el);
+      } catch {
+        const extracted = range.extractContents();
+        el.appendChild(extracted);
+        range.insertNode(el);
+      }
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  }
+
+  // Replace the block element under the cursor with a new element of the given tag.
+  function changeBlockFormat(tagName) {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const block = findBlock(range.startContainer);
+    if (!block) return;
+
+    const newEl = document.createElement(tagName);
+    while (block.firstChild) newEl.appendChild(block.firstChild);
+    block.replaceWith(newEl);
+
+    const r = document.createRange();
+    r.selectNodeContents(newEl);
+    r.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+
+  // Toggle a list (ul/ol) on the block under the cursor.
+  function toggleList(tagName) {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const block = findBlock(range.startContainer);
+    if (!block) return;
+
+    const isActive = tagName === 'ul' ? active.bullet : active.ordered;
+
+    if (isActive) {
+      const li = block.tagName === 'LI' ? block : null;
+      const list = li?.closest(tagName);
+      if (!list) return;
+
+      const frag = document.createDocumentFragment();
+      let targetP = null;
+      Array.from(list.children).filter(n => n.tagName === 'LI').forEach(item => {
+        const p = document.createElement('p');
+        while (item.firstChild) p.appendChild(item.firstChild);
+        if (!p.hasChildNodes()) p.innerHTML = '<br>';
+        if (item === li) targetP = p;
+        frag.appendChild(p);
+      });
+      list.replaceWith(frag);
+
+      if (targetP) {
+        const r = document.createRange();
+        r.selectNodeContents(targetP);
+        r.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(r);
+      }
+    } else {
+      const li = document.createElement('li');
+      while (block.firstChild) li.appendChild(block.firstChild);
+      if (!li.hasChildNodes()) li.innerHTML = '<br>';
+      const list = document.createElement(tagName);
+      list.appendChild(li);
+      block.replaceWith(list);
+
+      const r = document.createRange();
+      r.selectNodeContents(li);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  }
+
   function applyMultilineList(tagName) {
     const sel = window.getSelection();
     if (!sel?.rangeCount) return false;
@@ -501,7 +666,7 @@
     if (!lines.length) return false;
 
     const html = `<${tagName}>${lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</${tagName}>`;
-    document.execCommand('insertHTML', false, html);
+    insertFragment(html);
     return true;
   }
 
@@ -511,30 +676,18 @@
     editor.focus();
 
     switch (fmt) {
-      case 'bold':          document.execCommand('bold',                false); break;
-      case 'italic':        document.execCommand('italic',              false); break;
-      case 'strikethrough': document.execCommand('strikeThrough',       false); break;
+      case 'bold':          toggleInlineFormat('strong', ['strong', 'b'],         active.bold);          break;
+      case 'italic':        toggleInlineFormat('em',     ['em', 'i'],              active.italic);        break;
+      case 'strikethrough': toggleInlineFormat('del',    ['del', 's', 'strike'],  active.strikethrough); break;
       case 'bullet':
-        if (!applyMultilineList('ul')) {
-          document.execCommand('insertUnorderedList', false);
-        }
+        if (!applyMultilineList('ul')) toggleList('ul');
         break;
       case 'ordered':
-        if (!applyMultilineList('ol')) {
-          document.execCommand('insertOrderedList', false);
-        }
+        if (!applyMultilineList('ol')) toggleList('ol');
         break;
-      case 'body':          document.execCommand('formatBlock',         false, 'p'); break;
-      case 'h1': {
-        const cur = document.queryCommandValue('formatBlock').toLowerCase();
-        document.execCommand('formatBlock', false, cur === 'h1' ? 'p' : 'h1');
-        break;
-      }
-      case 'h2': {
-        const cur = document.queryCommandValue('formatBlock').toLowerCase();
-        document.execCommand('formatBlock', false, cur === 'h2' ? 'p' : 'h2');
-        break;
-      }
+      case 'body': changeBlockFormat('p'); break;
+      case 'h1':   changeBlockFormat(active.h1 ? 'p' : 'h1'); break;
+      case 'h2':   changeBlockFormat(active.h2 ? 'p' : 'h2'); break;
       case 'quote': toggleBlockquote(); break;
     }
 

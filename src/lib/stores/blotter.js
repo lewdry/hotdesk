@@ -28,7 +28,7 @@ It is a tool for thinking, jotting and drafting without the cloud.
 
 Delete this text to start fresh, or select **New**.
 
-If you want to share, select **Save** to export your work as a universal \`.md\` (markdown) file.
+To share, select **Save** to export your work as a universal \`.md\` (markdown) file.
 
 ---
 

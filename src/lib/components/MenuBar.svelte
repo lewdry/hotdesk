@@ -280,10 +280,9 @@
         <span class="title" id="about-title">About Hotdesk</span>
       </div>
       <div class="window-pane about-body">
-        <p><strong>Hotdesk v1.0</strong></p>
-        <p>A persistent, distraction-free notepad by Lewis Dryburgh.</p>
+        <p>A persistent, distraction-free notepad by <a href="https://lewisdryburgh.com" target="_blank" rel="noopener noreferrer">Lewis Dryburgh</a>.</p>
         <div class="about-section">
-          <p class="about-label">Made with:</p>
+          <p class="about-label">Thanks</p>
           <ul class="about-list">
             <li><strong>Interface:</strong> System.css by Sakun Acharige.</li>
             <li><strong>Markdown Engine:</strong> Marked by Christopher Jeffrey and MarkedJS Community.</li>
@@ -292,11 +291,12 @@
           </ul>
         </div>
         <div class="about-section">
-          <p class="about-label">Inspiration:</p>
+          <p class="about-label">Inspiration</p>
           <p>Based on the original "read-write" web vision of Tim Berners-Lee.</p>
         </div>
         <div class="about-section">
-          <p>Hotdesk is local-first. Your notes are stored in your browser and never leave your device, unless you share them.</p>
+          <p class="about-label">Privacy First</p>
+          <p>Hotdesk is local. Your notes are stored in your browser and never leave your device, unless you share them.</p>
         </div>
         <button class="btn" on:click={() => showAbout = false}>OK</button>
       </div>

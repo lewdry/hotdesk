@@ -10,9 +10,7 @@ const WELCOME_TEXT = `# Welcome to Hotdesk
 
 A local, minimal notepad.
 
-**Hotdesk** is a private "read-write" home page. 
-
-It is a tool for thinking, jotting and drafting without the cloud.
+**Hotdesk** is a private "read-write" home page. A quiet space to think, take notes and draft.
 
 ---
 

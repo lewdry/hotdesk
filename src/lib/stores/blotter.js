@@ -36,7 +36,7 @@ Use the toolbar to style your text:
 *   **B**, *I*, ~~S~~ - bold, italic, strikethrough
 *   **H1**, **H2**, **¶** - headings and body text
 *   **•**, **1.**, **"** - lists and blockquotes
-*   Type \`--\` on a blank line to insert a horizontal rule
+*   Type \`---\` on a blank line to insert a horizontal rule
 
 ---
 

@@ -62,17 +62,17 @@
     if (!selection?.rangeCount || !editor) return null;
 
     const block = findBlock(selection.getRangeAt(0).startContainer);
-    if (block && normalizeEditorText(block.textContent) === '--') {
+    if (block && normalizeEditorText(block.textContent) === '---') {
       return block;
     }
 
-    if (normalizeEditorText(editor.textContent || '') !== '--') {
+    if (normalizeEditorText(editor.textContent || '') !== '---') {
       return null;
     }
 
     const onlyTextAtRoot = Array.from(editor.childNodes).every(node => {
       if (node.nodeType === Node.TEXT_NODE) {
-        return normalizeEditorText(node.textContent || '') === '--' || normalizeEditorText(node.textContent || '') === '';
+        return normalizeEditorText(node.textContent || '') === '---' || normalizeEditorText(node.textContent || '') === '';
       }
 
       if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'BR') {
@@ -89,7 +89,7 @@
   function handleInput() {
     if (!editor) return;
 
-    // Auto-convert: a block containing only "--" → <hr>
+    // Auto-convert: a block containing only "---" → <hr>
     const sel = window.getSelection();
     if (sel?.rangeCount) {
       const ruleTarget = findRuleMarkerTarget(sel);

@@ -284,10 +284,11 @@
         <div class="about-section">
           <p class="about-label">Thanks</p>
           <ul class="about-list">
-            <li><strong>Interface:</strong> System.css by Sakun Acharige.</li>
-            <li><strong>Markdown Engine:</strong> Marked by Christopher Jeffrey and MarkedJS Community.</li>
-            <li><strong>Data Safety:</strong> DOMPurify by Cure53.</li>
-            <li><strong>Storage:</strong> idb by Jake Archibald.</li>
+            <li><strong>Interface:</strong> <a href="https://sakofchit.github.io/system.css/" target="_blank" rel="noopener noreferrer">System.css</a> by Sakun Acharige.</li>
+            <li><strong>Markdown Engine:</strong> <a href="https://marked.js.org" target="_blank" rel="noopener noreferrer">Marked</a> by MarkedJS Community.</li>
+            <li><strong>Data Safety:</strong> <a href="https://github.com/cure53/dompurify" target="_blank" rel="noopener noreferrer">DOMPurify</a> by Cure53.</li>
+            <li><strong>Storage:</strong> <a href="https://github.com/jakearchibald/idb" target="_blank" rel="noopener noreferrer">idb</a> by Jake Archibald.</li>
+            <li><strong>HTML Conversion:</strong> <a href="https://mixmark-io.github.io/turndown/" target="_blank" rel="noopener noreferrer">Turndown</a> by Dom Christie.</li>
           </ul>
         </div>
         <div class="about-section">

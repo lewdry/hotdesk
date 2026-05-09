@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test</title></head>
+<body>
+  <div id="editor" contenteditable="true">
+    <p>Line 1</p>
+    <p>Line 2</p>
+    <p>Line 3</p>
+  </div>
+  <script>
+    const editor = document.getElementById('editor');
+    const range = document.createRange();
+    range.setStart(editor.childNodes[1].firstChild, 0); // Line 1
+    range.setEnd(editor.childNodes[3].firstChild, 6);   // Line 2
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    
+    document.execCommand('insertUnorderedList');
+    console.log(editor.innerHTML);
+  </script>
+</body>
+</html>

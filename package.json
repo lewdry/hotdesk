@@ -18,6 +18,7 @@
     "@sakun/system.css": "^0.1.11",
     "dompurify": "^3.4.1",
     "idb": "^8.0.0",
-    "marked": "^18.0.2"
+    "marked": "^18.0.2",
+    "turndown": "^7.2.4"
   }
 }

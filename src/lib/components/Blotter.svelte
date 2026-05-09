@@ -3,10 +3,16 @@
   import { blotter } from '../stores/blotter.js';
   import { marked } from 'marked';
   import DOMPurify from 'dompurify';
+  import TurndownService from 'turndown';
+  import { htmlToMd } from '../utils/serializer.js';
+  import { applyFormat } from '../utils/commands.js';
+  import Toolbar from './Toolbar.svelte';
 
   let editor;
   let lastMd = '';
   let activeBlock = null;
+  let serializeTimer;
+  const turndownService = new TurndownService({ headingStyle: 'atx', hr: '---', bulletListMarker: '-' });
 
   // ── Bootstrap ───────────────────────────────────────────────────────────────
   onMount(() => {
@@ -24,123 +30,7 @@
     lastMd = $blotter;
   }
 
-  // ── HTML → Markdown serializer ──────────────────────────────────────────────
-  function htmlToMd(html) {
-    const root = document.createElement('div');
-    root.innerHTML = html;
-    return walk(root).replace(/\n{3,}/g, '\n\n').trim();
-  }
 
-  function walk(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      return node.textContent.replace(/\u00a0/g, ' ');
-    }
-    if (node.nodeType !== Node.ELEMENT_NODE) return '';
-
-    const tag  = node.tagName.toLowerCase();
-    const kids = () => Array.from(node.childNodes).map(walk).join('');
-
-    switch (tag) {
-      case 'body':
-      case 'div':
-        return Array.from(node.childNodes).map(n => {
-          if (n.nodeType === Node.TEXT_NODE) {
-            const t = n.textContent.replace(/\u00a0/g, ' ').trim();
-            return t ? t + '\n\n' : '';
-          }
-          return walk(n);
-        }).join('');
-      case 'p': {
-        const c = kids().trim();
-        return c ? c + '\n\n' : '\n';
-      }
-      case 'h1': return `# ${kids().trim()}\n\n`;
-      case 'h2': return `## ${kids().trim()}\n\n`;
-      case 'h3': return `### ${kids().trim()}\n\n`;
-      case 'h4': return `#### ${kids().trim()}\n\n`;
-      case 'h5': return `##### ${kids().trim()}\n\n`;
-      case 'h6': return `###### ${kids().trim()}\n\n`;
-      case 'strong':
-      case 'b': { const c = kids(); return c.trim() ? `**${c}**` : ''; }
-      case 'em':
-      case 'i': { const c = kids(); return c.trim() ? `*${c}*` : ''; }
-      case 'u': { return kids(); }
-      case 'del':
-      case 's':
-      case 'strike': { const c = kids(); return c.trim() ? `~~${c}~~` : ''; }
-      case 'hr': return '---\n\n';
-      case 'br': return '\n';
-      case 'a': return `[${kids()}](${node.getAttribute('href') || ''})`;
-      case 'code': return node.closest('pre') ? kids() : `\`${kids()}\``;
-      case 'pre': return `\`\`\`\n${kids().trim()}\n\`\`\`\n\n`;
-      case 'ul': {
-        const lis = [...node.children].filter(n => n.tagName === 'LI');
-        return lis.length
-          ? lis.map(li => {
-              // Task list item: contains a checkbox input
-              const cb = li.querySelector('input[type="checkbox"]');
-              if (cb) {
-                const checked = cb.checked ? 'x' : ' ';
-                // Text content without the checkbox
-                const text = [...li.childNodes]
-                  .filter(n => !(n.nodeType === Node.ELEMENT_NODE && n.tagName === 'INPUT'))
-                  .map(walk).join('').trim();
-                return `- [${checked}] ${text}`;
-              }
-              return `- ${[...li.childNodes].map(walk).join('').trim()}`;
-            }).join('\n') + '\n\n'
-          : kids();
-      }
-      case 'ol': {
-        const lis = [...node.children].filter(n => n.tagName === 'LI');
-        return lis.length
-          ? lis.map((li, i) => `${i + 1}. ${[...li.childNodes].map(walk).join('').trim()}`).join('\n') + '\n\n'
-          : kids();
-      }
-      case 'li': return kids();
-      case 'input': {
-        // Handled inside ul case; skip here to avoid duplicate text
-        return '';
-      }
-      case 'img': {
-        const alt = node.getAttribute('alt') || '';
-        const src = node.getAttribute('src') || '';
-        return `![${alt}](${src})`;
-      }
-      case 'table': {
-        const rows = [...node.querySelectorAll('tr')];
-        if (!rows.length) return kids();
-        const toText = cell => walk(cell).trim().replace(/\|/g, '\\|');
-        const headerRow = rows[0];
-        const headers = [...headerRow.querySelectorAll('th, td')].map(toText);
-        const separator = headers.map(() => '---');
-        const bodyRows = rows.slice(1).map(row =>
-          [...row.querySelectorAll('th, td')].map(toText)
-        );
-        const fmt = cols => '| ' + cols.join(' | ') + ' |';
-        return [fmt(headers), fmt(separator), ...bodyRows.map(fmt)].join('\n') + '\n\n';
-      }
-      case 'thead':
-      case 'tbody':
-      case 'tfoot':
-      case 'tr':
-      case 'th':
-      case 'td': return kids();
-      case 'blockquote': {
-        const c = kids().trim();
-        return c ? c.split('\n').map(l => `> ${l}`).join('\n') + '\n\n' : '';
-      }
-      case 'span': {
-        let c = kids();
-        const s = node.getAttribute('style') || '';
-        if (/font-weight\s*:\s*(bold|700)/i.test(s))          c = `**${c}**`;
-        if (/font-style\s*:\s*italic/i.test(s))               c = `*${c}*`;
-        if (/text-decoration[^;]*line-through/i.test(s))      c = `~~${c}~~`;
-        return c;
-      }
-      default: return kids();
-    }
-  }
 
   function normalizeEditorText(text) {
     return text
@@ -208,9 +98,13 @@
       }
     }
 
-    const md = htmlToMd(editor.innerHTML);
-    lastMd = md;
-    blotter.set(md);
+    clearTimeout(serializeTimer);
+    serializeTimer = setTimeout(() => {
+      const md = htmlToMd(editor.innerHTML);
+      lastMd = md;
+      blotter.set(md);
+    }, 300);
+
     refreshActive();
   }
 
@@ -219,6 +113,16 @@
 
   function handlePaste(e) {
     e.preventDefault();
+
+    const htmlData = e.clipboardData?.getData('text/html');
+    if (htmlData) {
+      const md = turndownService.turndown(htmlData);
+      const html = DOMPurify.sanitize(marked.parse(md, { breaks: true }));
+      insertFragment(html);
+      handleInput();
+      return;
+    }
+
     const text = (e.clipboardData || window.clipboardData).getData('text/plain');
 
     if (MD_RE.test(text)) {
@@ -237,6 +141,7 @@
         sel.addRange(range);
       }
     }
+    handleInput();
   }
 
   // Re-render on blur so bare URLs typed by the user become clickable links
@@ -549,242 +454,12 @@
     sel.addRange(r);
   }
 
-  // Toggle an inline wrapper element (strong, em, del) on the current selection.
-  function toggleInlineFormat(tagName, matchTags, isActive) {
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    if (range.collapsed) return;
-
-    if (isActive) {
-      let n = range.startContainer;
-      if (n.nodeType === Node.TEXT_NODE) n = n.parentElement;
-      const wrapper = n.closest(matchTags.join(','));
-      if (!wrapper || !editor.contains(wrapper)) return;
-      const frag = document.createDocumentFragment();
-      while (wrapper.firstChild) frag.appendChild(wrapper.firstChild);
-      wrapper.replaceWith(frag);
-    } else {
-      const el = document.createElement(tagName);
-      try {
-        range.surroundContents(el);
-      } catch {
-        const extracted = range.extractContents();
-        el.appendChild(extracted);
-        range.insertNode(el);
-      }
-      const r = document.createRange();
-      r.selectNodeContents(el);
-      sel.removeAllRanges();
-      sel.addRange(r);
-    }
-  }
-
-  // Replace the block element under the cursor with a new element of the given tag.
-  function changeBlockFormat(tagName) {
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    const block = findBlock(range.startContainer);
-    if (!block) return;
-
-    const newEl = document.createElement(tagName);
-    while (block.firstChild) newEl.appendChild(block.firstChild);
-    block.replaceWith(newEl);
-
-    const r = document.createRange();
-    r.selectNodeContents(newEl);
-    r.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(r);
-  }
-
-  // Toggle a list (ul/ol) on the block under the cursor.
-  function toggleList(tagName) {
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    const block = findBlock(range.startContainer);
-    if (!block) return;
-
-    const isActive = tagName === 'ul' ? active.bullet : active.ordered;
-
-    if (isActive) {
-      const li = block.tagName === 'LI' ? block : null;
-      const list = li?.closest(tagName);
-      if (!list) return;
-
-      const frag = document.createDocumentFragment();
-      let targetP = null;
-      Array.from(list.children).filter(n => n.tagName === 'LI').forEach(item => {
-        const p = document.createElement('p');
-        while (item.firstChild) p.appendChild(item.firstChild);
-        if (!p.hasChildNodes()) p.innerHTML = '<br>';
-        if (item === li) targetP = p;
-        frag.appendChild(p);
-      });
-      list.replaceWith(frag);
-
-      if (targetP) {
-        const r = document.createRange();
-        r.selectNodeContents(targetP);
-        r.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(r);
-      }
-    } else {
-      const li = document.createElement('li');
-      while (block.firstChild) li.appendChild(block.firstChild);
-      if (!li.hasChildNodes()) li.innerHTML = '<br>';
-      const list = document.createElement(tagName);
-      list.appendChild(li);
-      block.replaceWith(list);
-
-      const r = document.createRange();
-      r.selectNodeContents(li);
-      r.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(r);
-    }
-  }
-
-  function applyMultilineList(tagName) {
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return false;
-
-    const range = sel.getRangeAt(0);
-    if (range.collapsed) return false;
-
-    const text = range.toString().replace(/\u00a0/g, ' ');
-    if (!/[\r\n]/.test(text)) return false;
-
-    const lines = text
-      .split(/\r?\n/)
-      .map(line => line.trim())
-      .filter(Boolean);
-
-    if (!lines.length) return false;
-
-    const html = `<${tagName}>${lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</${tagName}>`;
-    insertFragment(html);
-    return true;
-  }
-
-  // ── Formatting ──────────────────────────────────────────────────────────────
-  function applyFormat(fmt) {
-    if (!editor) return;
-    editor.focus();
-
-    switch (fmt) {
-      case 'bold':          toggleInlineFormat('strong', ['strong', 'b'],         active.bold);          break;
-      case 'italic':        toggleInlineFormat('em',     ['em', 'i'],              active.italic);        break;
-      case 'strikethrough': toggleInlineFormat('del',    ['del', 's', 'strike'],  active.strikethrough); break;
-      case 'bullet':
-        if (!applyMultilineList('ul')) toggleList('ul');
-        break;
-      case 'ordered':
-        if (!applyMultilineList('ol')) toggleList('ol');
-        break;
-      case 'body': changeBlockFormat('p'); break;
-      case 'h1':   changeBlockFormat(active.h1 ? 'p' : 'h1'); break;
-      case 'h2':   changeBlockFormat(active.h2 ? 'p' : 'h2'); break;
-      case 'quote': toggleBlockquote(); break;
-    }
-
-    handleInput();
-  }
-
-  function toggleBlockquote() {
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    if (inBlockquote()) {
-      const n  = sel.getRangeAt(0).startContainer;
-      const el = n.nodeType === Node.TEXT_NODE ? n.parentElement : n;
-      const bq = el.closest('blockquote');
-      if (!bq) return;
-      const frag = document.createDocumentFragment();
-      while (bq.firstChild) frag.appendChild(bq.firstChild);
-      bq.replaceWith(frag);
-    } else {
-      const blk = findBlock(sel.getRangeAt(0).startContainer);
-      if (!blk) return;
-      const bq = document.createElement('blockquote');
-      blk.replaceWith(bq);
-      bq.appendChild(blk);
-    }
+  function handleFormat(fmt) {
+    applyFormat(fmt, editor, active, handleInput);
   }
 </script>
 
-<!-- Formatting toolbar -->
-<div class="fmt-toolbar">
-  <button
-    class="fmt-btn fmt-bold"
-    class:active={active.bold}
-    on:mousedown|preventDefault={() => applyFormat('bold')}
-    title="Bold"
-  ><strong>B</strong></button>
-
-  <button
-    class="fmt-btn fmt-italic"
-    class:active={active.italic}
-    on:mousedown|preventDefault={() => applyFormat('italic')}
-    title="Italic"
-  ><em>I</em></button>
-
-  <button
-    class="fmt-btn fmt-strike"
-    class:active={active.strikethrough}
-    on:mousedown|preventDefault={() => applyFormat('strikethrough')}
-    title="Strikethrough"
-  ><s>S</s></button>
-
-  <div class="fmt-sep"></div>
-
-  <button
-    class="fmt-btn"
-    class:active={active.h1}
-    on:mousedown|preventDefault={() => applyFormat('h1')}
-    title="Heading 1"
-  >H1</button>
-
-  <button
-    class="fmt-btn"
-    class:active={active.h2}
-    on:mousedown|preventDefault={() => applyFormat('h2')}
-    title="Heading 2"
-  >H2</button>
-
-  <button
-    class="fmt-btn"
-    class:active={active.body}
-    on:mousedown|preventDefault={() => applyFormat('body')}
-    title="Body text"
-  >¶</button>
-
-  <div class="fmt-sep"></div>
-
-  <button
-    class="fmt-btn"
-    class:active={active.bullet}
-    on:mousedown|preventDefault={() => applyFormat('bullet')}
-    title="Bullet list"
-  >•</button>
-
-  <button
-    class="fmt-btn fmt-ordered"
-    class:active={active.ordered}
-    on:mousedown|preventDefault={() => applyFormat('ordered')}
-    title="Numbered list"
-  >1.</button>
-
-  <button
-    class="fmt-btn"
-    class:active={active.quote}
-    on:mousedown|preventDefault={() => applyFormat('quote')}
-    title="Blockquote"
-  >"</button>
-
-</div>
+<Toolbar {active} onFormat={handleFormat} />
 
 <!-- WYSIWYG editor -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -805,62 +480,6 @@
 ></div>
 
 <style>
-  /* ── Toolbar ─────────────────────────────────────────────────────────────── */
-  .fmt-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 1px;
-    padding: 3px 6px;
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-toolbar);
-    flex-shrink: 0;
-    user-select: none;
-  }
-
-  .fmt-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 26px;
-    height: 22px;
-    padding: 0 4px;
-    font-size: 13px;
-    font-family: Chicago, Geneva, 'Helvetica Neue', sans-serif;
-    background: var(--color-toolbar);
-    border: 1px solid transparent;
-    color: var(--color-text);
-    cursor: default;
-    user-select: none;
-    box-sizing: border-box;
-  }
-
-  .fmt-btn:hover {
-    border-color: var(--color-border);
-    box-shadow:
-      inset -1px -1px 0 var(--color-shadow-lo),
-      inset  1px  1px 0 var(--color-shadow-hi);
-  }
-
-  .fmt-btn.active {
-    border-color: var(--color-border);
-    box-shadow:
-      inset  1px  1px 0 var(--color-shadow-lo),
-      inset -1px -1px 0 var(--color-shadow-hi);
-    background: var(--color-toolbar-pressed);
-  }
-
-  .fmt-bold strong   { font-weight: bold;           font-size: 13px; }
-  .fmt-italic em     { font-style: italic;           font-size: 13px; font-family: Chicago, Geneva, 'Helvetica Neue', sans-serif; }
-  .fmt-strike s      { text-decoration: line-through; }
-  .fmt-ordered       { font-size: 12px; letter-spacing: -0.5px; }
-
-  .fmt-sep {
-    width: 1px;
-    height: 16px;
-    background: var(--color-border);
-    margin: 0 3px;
-    flex-shrink: 0;
-  }
 
   /* ── Editor ──────────────────────────────────────────────────────────────── */
   .blotter-area {
